@@ -1,0 +1,44 @@
+"LANG -*- mode: csv; coding: utf-8; -*-","Sentence","Noun phrase","Vocative","Possessive","Genitive","Plural","Definite","Indefinite","In","Comparative","Superlative","Verb phrase","Past","Perfect","Future","Continuous","Conditional","Negative"
+"CMN","$subject $verb $object",,,"$owner de $thing",,,,,,,,,"$verb céngji1ng
+guòqù $verb guò
+$verb guò
+$verb lè","yi1ji1ng $verb guòlè","jia1ng $verb","zhèngzài $verb",,"bu"
+"DUT",,,,,,,,,,,,,,,,,,
+"ENG","$subject $verb $object","$noun
+$adjective $nounphrase",,"${owner}'s $thing | singular{$owner)
+${owner}s' $thing | plural($owner)
+$thing of $owner",,"${noun}s",,"an $noun | $noun =~ /^[aeiou]/
+a $noun","in $noun","${adjective}er","${adjective}est","$verb $adverb","${verb}ed # “strong” verbs change a vowel instead","have done $verb","will infinitive($verb)","does $verb",,"not $verb"
+"FIN",,,,,,,,,,,,,,,,,,
+"FRN",,,,,,,,,,,,,,,,,,
+"GER",,,,,,,,,,,,,,,,,,
+"GLI","$verb $subject $object","$adjective $noun | $adjective =~ /^[bcdfghlmnprst]*[aeiouáéíóú]+[bcdfghlmnprst]+$/ # monosyllabic adjectives can move to front, or maybe become compound word
+$noun séimhiú($adjective) | feminine($noun) && $noun =~ /^[bcdfgmpst]/
+$noun $adjective","A lenition($noun)","$owner genitive($thing)","${noun}e | feminine($noun)
+${root}${finalvowel}i${finalconsonant} | ($root,$finalvowel,$finalconsonant) = ($noun =~ /^(.+)([aouáóú])([^aeiouáéíóú]+)$/)
+${noun}a
+${root}igh | $root = ($noun =~ /(.+)ach$/)
+${root}aigh | $root = ($noun =~ /(.+)each$/)
+${root}each | $root = ($noun =~ /(.+)aí$/)
+${root}ach | $root = ($noun =~ /(.+)í$/)
+${root}${prefinalvowel}${finalconsonant}ach | ($root,$prefinalvowel,$finalconsonant) = ($noun =~ /^(.+)([aouáóú])[^eiéí]+([^aeiouáéíóú]+)$/)
+$noun | $noun =~ /[aeiouáéíóú]$/","${noun}í
+${noun}anna
+${noun}eanna
+${noun}óg
+${noun}eóg
+${noun}acha
+${noun}eacha
+${root}${finalvowel}i${finalconsonant} | ($root,$finalvowel,$finalconsonant) = ($noun =~ /^(.+)([aouáóú])([^aeiouáéíóú]+)$/)
+${root}aigh | $root = ($noun =~ /(.+)ach$/)","an t$noun | feminine($noun) && $noun =~/^s[lnraeiouáéíóú]/
+an séimhiú($noun) | feminine($noun) && $noun =~ /^[bcdfghlmnprst]/
+an t-$noun | masculine($noun) && $noun =~ /^[aeiouáéíóú]/
+an $noun","$noun","in $noun | $noun =~ /^[aeiouáéíóú]/
+i eclipsis($noun)",,,"$verb go $adverb","séimhiú($verb) | $verb =~ /^[bcdfgmpt]/
+d${verb} | $verb =~ /^[aeiouáéíóú]/",,,,,
+"JPN",,,,,,,,,,,,,,,,,,
+"LTN",,,,,,,,,,,,,,,,,,
+"NRR",,,,,,,,,,,,,,,,,,
+"PQL",,,,,,,,,,,,,,,,,,
+"RUS",,,,,,,,,,,,,,,,,,
+"SWD",,,,,,,,,,,,,,,,,,

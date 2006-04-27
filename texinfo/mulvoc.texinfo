@@ -1,0 +1,266 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename mulvoc.info
+@settitle Mulvoc manual
+@direntry
+* mulvoc::			MUlti-Lingual VOcabulary.
+@end direntry
+@iftex
+@finalout
+@afourpaper
+@end iftex
+@c %**end of header
+@c  Status: in progress
+@titlepage
+@sp 10
+@title{Mulvoc}
+@subtitle{MUlti-Lingual VOcabulary}
+@author{by J. C. G. Sturdy}
+@c The following two commands start the copyright page.
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 2006 John C. G. Sturdy
+
+Published by John C. G. Sturdy.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+@end titlepage
+@node Top, Introduction, (dir), (dir)
+
+@c store these by makeinfo, copying them into subdirs of htdocs, tarring them up and doing 
+@c scp htdocs.tar.gz jcg_sturdy@mulvoc.sourceforge.net:/home/groups/m/mu/mulvoc 
+@c then log in to mulvoc.sourceforge.net and unpack them
+@ifinfo
+This file documents mulvoc, the MUlti-Lingual VOcabulary system.
+
+This document applies to version 1 of Mulvoc.
+@end ifinfo
+
+@menu
+* Introduction::                Introduction
+* Using Mulvoc::                 Ways of using Mulvoc
+* Vocabulary files::            Vocabulary file format
+* Installation::                Installating Mulvoc
+* Configuration::               Configuration
+
+@detailmenu
+ --- The Detailed Node Listing ---
+
+Vocabulary files
+
+* Header lines::                Header lines
+* Language names::              Language names
+* Cell format::                 Data cell format
+* Special columns::             Special columns
+
+Configuration
+
+* Enabling Mulvoc::              Enabling Mulvoc triggers
+* Language Selection::          Selecting the languages used
+* Controlling the display::     Controlling the Mulvoc display
+* Selecting files::             Selecting language files
+
+@end detailmenu
+@end menu
+
+@node  Introduction, Using Mulvoc, Top, Top
+@comment  node-name,  next,  previous,  up
+@chapter Introduction
+
+Mulvoc is a package of natural language vocabulary handling code for
+GNUemacs. Although it could be used in a variety of ways, its original
+purpose is to help the user to learn vocabulary in other languages. As
+you use words in your emacs session, mulvoc flashes up translations of
+words that it has in its dictionary.  It is not meant to be a
+translation aid or auto translator, although the author may be tempted
+to try to add such facilities later. 
+
+Mulvoc uses a simple spreadsheet format, with a column for each
+language, to hold its vocabulary data.
+
+Mulvoc reads its vocabulary from multiple files, merging the data
+together so that translations can be recognised even when the original
+and target words do not occur in the same file; for example, if you
+have three files each containing two languages, if file 1 gives the
+translation of A as B, and file 2 gives the translation of C as D, and
+file 3 gives the translation of B as C, mulvoc will recognise that D is
+a translation of A.
+
+@node  Using Mulvoc, Vocabulary files, Introduction, Top
+@comment  node-name,  next,  previous,  up
+@chapter Using Mulvoc
+
+For how to install mulvoc into your Emacs system, @xref{Installation}. 
+
+For the most part, you don't have to do anything to use mulvoc.  Simply
+entering words in text will trigger mulvoc's features when the minor
+mode @code{mulvoc-mode} is active. 
+
+When you type a word that mulvoc recognises, translations of the word
+will appear.  Mulvoc has three ways of displaying the translations:
+
+@itemize
+@item in the message line
+@item as ToolTips
+@item as overlays on the buffer text
+@end itemize
+
+You can control these individually; @xref{Controlling the display}. 
+
+@node  Vocabulary files, Installation, Using Mulvoc, Top
+@comment  node-name,  next,  previous,  up
+@chapter Vocabulary files
+
+@menu
+* Header lines::                Header lines
+* Language names::              Language names
+* Cell format::                 Data cell format
+* Special columns::             Special columns
+@end menu
+
+Mulvoc's vocabulary files are in the Comma Separated Value (CSV) format
+supported by many spreadsheet and database programs.  There is one row
+for each word (mulvoc calls this a ``meaning'' internally), and one
+column per language. 
+
+There are also some special rows, at the top of the file, and some
+special columns, conventionally on the left. 
+
+@node  Header lines, Language names, Vocabulary files, Vocabulary files
+@comment  node-name,  next,  previous,  up
+@section Header lines
+
+Each mulvoc vocabulary file must start with a header line which names
+the columns. Most of the columns have language names, given as
+three-letter codes in upper case; @xref{Language names}. There should
+also be a column for the type of word (the ``part of speech''), which
+is labelled @code{#TYPE}.
+
+There may also be a column labelled @code{#SENSE} which indicates the
+sense of the word, as some words have more than one meaning in the
+same language. 
+
+If you use the @code{#SENSE} column, you should use it consistently,
+as it is used in matching up parts of the same meaning.
+
+There can also be a row labelled (in the @code{#TYPE} column) as
+@code{#LANGUAGENAME}, to specify the human readable language name. 
+
+If you want to be able to edit vocabulary files conveniently using
+mulvoc, then should be a row whose @code{#TYPE} field is
+@code{#INPUT-METHODS}, and whose data cells are suitable for giving to
+Emacs' input method selection commands. 
+
+@node  Language names, Cell format, Header lines, Vocabulary files
+@comment  node-name,  next,  previous,  up
+@section Language names
+
+Mulvoc uses the three-letter language codes established by the Summer
+Institute of Linguistics (SIL). These are defined in the file
+LanguageCodes.tab, which is bundled with mulvoc by kind permission of
+SIL.
+
+@node Cell format, Special columns, Language names, Vocabulary files
+@comment  node-name,  next,  previous,  up
+@section Data cell format
+
+The basic cell format is the word by itself.  equivalent words can be
+put in the same cell, separated by commas.
+
+@node  Special columns,  , Cell format, Vocabulary files
+@comment  node-name,  next,  previous,  up
+@section Special columns
+
+@node  Installation, Configuration, Vocabulary files, Top
+@comment  node-name,  next,  previous,  up
+@chapter Installation
+
+To install mulvoc, you need to download the tarball, and
+the LanguageCodes.tab file, and put the elisp files from the
+bundle into a directory on your load path. You must set up a
+directory to contain the dictionaries, which by default is
+"~/dictionaries" but you can change this by setting the
+emacs-lisp variable @code{mulvoc-dictionaries-directories}
+(which gives a list of directories, rather than a single
+directory), and put general.csv (from the bundle) into it. Place
+LanguageCodes.tab in a location pointed to by the emacs-lisp
+variable @code{language-codes-file-name}, by default
+@file{"~/dictionaries/LanguageCodes.tab"}. Then, to activate
+mulvoc-mode, type @command{M-x mulvoc-mode} in a buffer where
+you want it turned on. The first time you start it in an Emacs
+session, it will load the language data, which is currently
+quite slow. (I plan to optimize it for when there is only one
+dictionary file; the slow stuff is putting together overlapping
+definitions from multiple dictionaries.)
+
+@node  Configuration,  , Installation, Top
+@comment  node-name,  next,  previous,  up
+@chapter Configuration
+
+@menu
+* Enabling Mulvoc::              Enabling Mulvoc triggers
+* Language Selection::          Selecting the languages used
+* Controlling the display::     Controlling the Mulvoc display
+* Selecting files::             Selecting language files
+@end menu
+
+@node  Enabling Mulvoc, Language Selection, Configuration, Configuration
+@comment  node-name,  next,  previous,  up
+@section Enabling Mulvoc triggers
+
+There are two ways in which mulvoc can be triggered, one as you finish
+typing each word, and one at the end of every Emacs command, including
+cursor movements. 
+
+Setting @code{mulvoc-cursor-active} non-nil causes translations of the
+word at point to be displayed at every command. This happens in
+buffers in which @code{mulvoc-setup-hook-function} has been run.
+
+Setting @code{mulvoc-abbrev-active} non-nil causes the abbreviation
+expansion mechanism to display translations of known words as they are
+entered.
+
+@node  Language Selection, Controlling the display, Enabling Mulvoc, Configuration
+@comment  node-name,  next,  previous,  up
+@section Selecting the languages used
+
+@code{mulvoc-displayed-languages} contains a list of the languages to
+display in. If nil, all known languages are used. The language names
+should be in the same format (and the same case) as used in the
+vocabulary files; @xref{Language names}.
+
+@node  Controlling the display, Selecting files, Language Selection, Configuration
+@comment  node-name,  next,  previous,  up
+@section Controlling the Mulvoc display
+
+@code{mulvoc-use-tooltips} controls whether to use tooltips, if they are available.
+
+Tooltips and echo area messages are very transient, and can easily
+disappear before you have read them, particularly if you are typing
+fast, or using voice input.  Mulvoc can use overlays to display the
+translations after the words that they refer to.  To enable this, set
+@code{mulvoc-use-overlays} as required:
+
+@itemize
+@item
+If nil, mulvoc does not use overlays.
+@item
+If a number, it uses that many of them, per buffer. As more overlays
+are created, old ones are destroyed to reduce clutter.
+@item
+If anything else, it uses any number of them.
+@end itemize
+
+@node  Selecting files,  , Controlling the display, Configuration
+@comment  node-name,  next,  previous,  up
+@section Selecting language files
+
+@code{mulvoc-dictionaries-directories} contains a list of directories
+containing dictionaries.
+
+@code{mulvoc-dictionaries-pattern} is a regular expression describing
+the filenames (within each directory in
+@code{mulvoc-dictionaries-directories}) holding the vocabulary.  It
+should normally be @code{".csv$"}. 

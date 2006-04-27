@@ -1,0 +1,154 @@
+"#TYPE","#SENSE","ENG","CMN","numeric pinyin","pinyin"
+"#LANGUAGENAME",,"English","Chinese","numeric tonepy","pinyin"
+"#INPUT-METHODS",,"british","chinese-tonepy",,"tone-pinyin-as-such"
+"preposition",,"above","上",,"shàng"
+"noun","time","afternoon","下午",,"xiàwŭ"
+"adjective",,"ahead",,"qia2n'qia2m",
+"noun","time","autumn","秋",,"qiū"
+"verb","present","be, am, is, are",,"shi4",
+"noun",,"beer",,"pi2jiu3",
+"adjective",,"behind",,"hou4",
+"adjective",,"below",,"xia4",
+"verb",,"can",,"ne2ng",
+"preposition","time","close to","傍",,"bàng"
+"noun","time","day","日",,"rì"
+"noun","time","day","星",,"xīng"
+"marker","question marker","did",,"ma1",
+"noun","time","early evening","傍挽",,"bàngwăn"
+"noun","time","early morning","早晨",,"zăochén"
+"noun",,"game",,"you2xi4",
+"adjective",,"good","好","hao3","hăo"
+"pronoun",,"he",,"ta1",
+"pronoun",,"hers",,"ta1de4",
+"adjective",,"high",,"gao1",
+"pronoun",,"his",,"ta1de4",
+"noun","time","hour","时",,"shí"
+"adjective",,"how",,"di1",
+"pronoun",,"I",,"wo3",
+"verb",,"is","是",,"shì"
+"pronoun",,"it",,"ta1",
+"pronoun",,"its",,"ta1de4",
+"adjective",,"large",,"da4",
+"adjective","time","late","晚",,"wăn"
+"adjective",,"left",,"zuo3",
+"adjective",,"long",,"cha2ng",
+"verb",,"may",,"ke2",
+"preposition",,"middle","中",,"zhōng"
+"noun","time","minute","分",,"fēn"
+"noun","time","month","月",,"yuè"
+"noun","time","morning","上午",,"shàngwŭ"
+"pronoun",,"my, mine",,"wo3de4",
+"noun","time","night","晚上",,"wănshàng"
+"adjective",,"no, incorrect",,"bu2shi4, bu2dui4",
+"noun","time","noon","中午",,"zhōngwŭ"
+"adjective",,"not good",,"bu4hao3",
+"pronoun",,"our, ours",,"wo3me2nde4",
+"adjective",,"past",,"guo4",
+"verb",,"play",,"wa2n",
+"adjective",,"right",,"you4",
+"noun","time","second","秒",,"miăo"
+"pronoun",,"she",,"ta1",
+"adjective",,"short",,"dua3n",
+"noun","time","sleeping time","夜",,"yè"
+"adjective",,"small",,"xiao3",
+"noun","time","spring","春",,"chūn"
+"noun","time","summer","厦",,"xià"
+"noun","time","sun","日",,"rì"
+"pronoun",,"that",,"na4",
+"pronoun",,"their, theirs",,"ta1me2nde4",
+"pronoun",,"these",,"zhe4xie1",
+"pronoun",,"they",,"ta1me2n",
+"adjective",,"thick",,"hou4",
+"adjective",,"thin",,"bao2",
+"pronoun",,"this",,"zhe4",
+"pronoun",,"those",,"na4xie1",
+"noun","time","today","今天",,"jīntiān"
+"noun",,"UK",,"yi1nggou2",
+"adjective",,"very good",,"he3nhao3",
+"verb",,"want",,"yao4",
+"pronoun",,"we",,"wo3me2n",
+"noun","time","week","星期",,"xīngqī"
+"noun","time","weekend","周末",,"zhōumò"
+"verb phrase","past","went to",,"le4, guo4",
+"pronoun","sg","which",,"na3ge4",
+"pronoun","pl","which",,"na3xie1",
+"marker","future marker","will, shall",,"jia1ng",
+"noun","time","winter","冬",,"dōng"
+"noun","time","year","年",,"nián"
+"adjective",,"yes, correct",,"shi4, dui4",
+"pronoun","sg","you",,"ni3, ni2n",
+"pronoun","pl","you",,,
+"pronoun",,"your, yours",,"ni3de4, ni2nde4",
+"marker","past marker",,,"guo4qu4, ce2ngji1ng",
+"marker","continuous marker",,,"zhe4ngzai4, zai4",
+"noun",,"gold",,,"jin1"
+"noun",,"silver",,,"yin2"
+"noun",,"copper",,,"tong2"
+"noun",,"iron",,,"tie3"
+"noun",,"steel",,,"gang1"
+"noun",,"lead",,,"qian1"
+"noun",,"aluminium",,,"lu3"
+"noun",,"saw",,,"ju4"
+"noun",,"drill",,,"zuan4"
+"noun",,"bell",,,"ling2"
+"noun",,"nail",,,"ding1"
+"noun",,"money",,,"qian2"
+"noun",,"clock",,,"zhong1"
+"noun",,"lock",,,"suo3"
+"noun",,"wok",,,"guo1"
+"noun",,"spade",,,"chan3"
+"noun",,"needle",,,"zhen1"
+"noun",,"casting",,,"zhu4"
+"noun",,"rust",,,"xiu4"
+"noun",,"key",,,"yao4shi"
+"noun",,"wood",,,"mu4"
+"noun",,"woods",,,"lin2"
+"noun",,"forest",,,"sen1"
+"noun",,"tree",,,"shu4"
+"noun",,"willow",,,"liu3"
+"noun",,"desk",,,"zhuo1"
+"noun",,"chair",,,"yi3"
+"noun",,"frame",,,"kuang1"
+"noun",,"bridge",,,"qiao2"
+"noun",,"mask",,,"wei2gan1"
+"noun",,"barrel",,,"tong3"
+"noun",,"coffin",,,"guan1"
+"noun",,"stick",,,"zhang4"
+"noun",,"branch",,,"zhi1"
+"noun",,"firewood",,,"chai2"
+"noun",,"plate",,,"ban3"
+"noun",,"shelf",,,"jia4"
+"noun",,"chess",,,"qi1"
+"adjective",,"rotten",,,"xiu3"
+"noun",,"ladder",,,"ti1"
+"noun",,"multi-storey building",,,"lou2"
+"noun",,"bigriver",,,"jaing1"
+"noun",,"river",,,"he2"
+"noun",,"laike",,,"hu2"
+"noun",,"sea",,,"hai3"
+"noun",,"ocean",,,"yang2"
+"noun",,"pond",,,"chi2"
+"noun",,"sweat",,,"han4"
+"noun",,"soup",,,"tang1"
+"noun",,"mud",,,"ni2"
+"noun",,"oil",,,"you2"
+"noun",,"flow",,,"liu2"
+"noun",,"wave",,,"lang4"
+"verb",,"sink",,,"chen2"
+"verb",,"float",,,"fu2"
+"noun",,"harbour",,,"gang3"
+"verb",,"swim",,,"you2yong3"
+"noun",,"ice",,,"bing1"
+"adjective",,"frozen",,,"dong4"
+"adjective",,"cold",,,"leng3"
+"adjective",,"cool",,,"liang2"
+"verb",,"condense",,,"ning2"
+"adjective",,"chilly",,,"lin3"
+"noun",,"ice on tree",,,"song1"
+"noun",,"coal",,,"mei2"
+"noun",,"smoke",,,"yang1"
+"noun",,"oven",,,"lu2"
+"noun",,"bed",,,"kang4"
+"noun",,"candle",,,"zhu2"
+"noun",,"lamp",,,"deng1"
+"noun",,"flame",,,"yang4"

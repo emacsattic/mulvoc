@@ -1,0 +1,12 @@
+"LANG -*- mode: csv; coding: utf-8; -*-","Pred1 name","Pred1 def","Pred2 name","Pred2 def","Prohib1 name","Prohib1 def","Muta1 name","Muta1 def","Muta2 name","Muta2 def"
+"ENG",,,,,,,,,,
+"GLI",,,,,"caol le caol agus leathan le leathan","[aouáó][bcdfghlmnprst]+[eiéí]
+[eiéí][bcdfghlmnprst]+[aouáó]","lenition","s/^([bcdfgmpst])(.+)/${1}h${2}","eclipsis","s/^(c.+)/g${1}/
+s/^(d.+)/n${1}/
+s/^(f.+)/bh${1}/
+s/^(g.+)/n${1}/
+s/^(p.+)/b${1}/
+s/^(t.+)/d${1}/
+"
+"CMN",,,,,,,,,,
+"FIN",,,,,"Vowel harmony","$word =~ /[aou]/ && $word =~ /[äöy]/",,,,
