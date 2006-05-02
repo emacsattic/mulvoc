@@ -1,5 +1,5 @@
 ;;;; mulvoc-writer.el -- write mulvoc data structures out to file
-;;; Time-stamp: <2006-04-18 14:35:19 john>
+;;; Time-stamp: <2006-05-01 14:25:14 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -44,7 +44,7 @@ Sixth argument is string to separate synonyms."
    )
   (when (null dictionary) (setq dictionary mulvoc-words))
   (when (or (null languages) (eq languages t))
-    (setq languages (nreverse (mapcar 'symbol-name (mapcar 'car mulvoc-languages)))))
+    (setq languages (nreverse (mapcar 'car mulvoc-languages))))
   (when (null synonym-separator)
     (setq synonym-separator ", "))
   (let ((meanings nil))
@@ -52,13 +52,15 @@ Sixth argument is string to separate synonyms."
      (lambda (word-atom)
        (when (and word-atom
 		  (boundp word-atom)
-		  (or (null words)
+		  (or (null words) ; if WORDS specified, check word-atom is in it
 		      (intern-soft (symbol-name word-atom) words)))
 	 (when mulvoc-debug
-	   (message "adding %S-->%S to collection for writing"
-		    word-atom (if (and word-atom (boundp word-atom))
-				  (symbol-value word-atom)
-				"<none>")))
+	   (message "adding %S"
+		    word-atom)
+	   (message "   with definition-->%S to collection for writing"
+		    (if (and word-atom (boundp word-atom))
+			(symbol-value word-atom)
+		      "<none>")))
 	 (dolist (def (symbol-value word-atom))
 	   (let ((data (cadr def)))
 	     (when mulvoc-debug
@@ -69,7 +71,7 @@ Sixth argument is string to separate synonyms."
 	     ))))
      dictionary)
     
-    (when mulvoc-debug
+    (when t mulvoc-debug
       (message "%d meanings collected" (length meanings))
       (message "meanings are %S" meanings)
       (message "languages are %S" languages))
@@ -77,7 +79,12 @@ Sixth argument is string to separate synonyms."
     (let ((dict-as-list 
 	   (mapcar (lambda (meaning)
 		     ;; (message "Looking at meaning %S" meaning)
-		     (cons (cons "#TYPE" (symbol-name (car meaning)))
+		     (cons (cons "#TYPE"
+				 (cond
+				  ((symbolp (car meaning))
+				   (symbol-name (car meaning)))
+				  ((consp (car meaning))
+				   (symbol-name (caar meaning)))))
 			   (mapcar (lambda (language)
 				     ;; (message "  Looking at language %S" language)
 				     (let ((pair (assoc language meaning)))
@@ -129,6 +136,12 @@ row to be included. If nil, it means all of LANGUAGES must be in that row.
 If t, all rows are output.
 OPTIONS is an alist of extra text to output in the table header etc.
 Valid keys are table-options, empty-cell-text, synonym-separator, and cell-options."
+
+  ;; todo: remove INPUT-METHODS row(s)
+  ;; todo: put LANGUAGE-NAMES row at top
+  ;; todo: treat #SENSE column specially
+  ;; todo: sort data, including handling SEQUENCENUMBER column specially
+
   (interactive
    (let* ((file (read-file-name "File to save dictionary in: "))
 	  (languages (mulvoc-read-languages "Language to include: "))
@@ -153,14 +166,24 @@ Valid keys are table-options, empty-cell-text, synonym-separator, and cell-optio
        (save-excursion 
 	 (find-file file)
 	 (erase-buffer)
-	 (insert "<html><head><title>Glossary</title></head>\n<body>\n")
+	 (insert "<html><head>\n")
+	 (insert "<title>Glossary</title>")
+	 (insert "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n")
+	 (insert "</head>\n<body>\n")
 	 (insert "<table" (if (assoc 'table-options options)
 			      (cdr (assoc 'table-options options))
 			    "")
 		 ">\n")
 	 (insert "  <tr>\n")
 	 (dolist (language languages)
-	   (insert "    <th>" language "</th>\n"))
+	   (insert "    <th>" 
+		   (cond
+		    ((stringp language)
+		     language)
+		    ((symbolp language)
+		     (symbol-name language))
+		    (t (prin1-to-string language)))
+		   "</th>\n"))
 	 (insert "  </tr>\n")
 	 (dolist (row dict-as-list)
 	   (when (mulvoc-writer-worthy-row row languages n-required)
@@ -168,7 +191,15 @@ Valid keys are table-options, empty-cell-text, synonym-separator, and cell-optio
 	     (dolist (cell row)
 	       (if (null (cdr cell))
 		   (insert "    <td" cell-opts ">" empty "</td>\n")
-		 (insert "    <td" cell-opts " lang=\"" (language-code-3-to-2 (car cell)) "\">")
+		 (let* ((language (car cell))
+			(language-name (cond
+					((stringp language) language)
+					((symbolp language) (symbol-name language))
+					(t (prin1-to-string language)))))
+		   (insert "    <td" cell-opts " lang=\""
+			   ;; (language-code-3-to-2 language-name)
+			language-name
+			   "\">"))
 		 (insert (cdr cell))
 		 (insert "</td>\n")))
 	     (insert "  </tr>\n")))
