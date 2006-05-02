@@ -1,5 +1,5 @@
 ;;;; mulvoc.el -- multi-lingual vocabulary
-;;; Time-stamp: <2006-04-18 14:35:18 john>
+;;; Time-stamp: <2006-05-01 12:29:35 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -327,6 +327,9 @@ used in the csv files that are read during mulvoc-setup.")
     (let ((mulvoc-in-setup t)
 	  (setup-started (current-time)))
       (run-hooks 'mulvoc-setup-hook)
+      (message "Mulvoc loading dictionaries matching %s from %s"
+	       mulvoc-dictionaries-pattern
+	       (mapconcat 'identity mulvoc-dictionaries-directories ", "))
       (dolist (dict-directory mulvoc-dictionaries-directories)
 	(message "Setting coding system for files in %s to be utf-8-unix" dict-directory)
 	(add-to-list 'file-coding-system-alist
