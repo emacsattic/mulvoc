@@ -107,7 +107,7 @@ will appear.  Mulvoc has three ways of displaying the translations:
 @item as overlays on the buffer text
 @end itemize
 
-You can control these individually; @xref{Controlling the display}. 
+@c You can control these individually; @xref{Controlling the display}. 
 
 @node  Vocabulary files, Installation, Using Mulvoc, Top
 @comment  node-name,  next,  previous,  up
@@ -173,31 +173,37 @@ put in the same cell, separated by commas.
 @comment  node-name,  next,  previous,  up
 @section Special columns
 
+Some of the column titles are not for languages, but are used
+specially by Mulvoc.
+
 @node  Installation, Configuration, Vocabulary files, Top
 @comment  node-name,  next,  previous,  up
 @chapter Installation
 
-To install mulvoc, you need to download the tarball, and
-the LanguageCodes.tab file, and put the elisp files from the
-bundle into a directory on your load path. You must set up a
-directory to contain the dictionaries, which by default is
-"~/dictionaries" but you can change this by setting the
-emacs-lisp variable @code{mulvoc-dictionaries-directories}
-(which gives a list of directories, rather than a single
-directory), and put general.csv (from the bundle) into it. Place
-LanguageCodes.tab in a location pointed to by the emacs-lisp
+To install mulvoc, you need to download the tarball, and the
+LanguageCodes.tab file, and put the elisp files from the bundle into a
+directory on your load path. You must set up a directory to contain
+the dictionaries, which by default is @file{~/dictionaries} but you
+can change this by setting the emacs-lisp variable
+@code{mulvoc-dictionaries-directories} (which gives a list of
+directories, rather than a single directory), and put
+@file{general.csv} (from the bundle) into it. Place
+@file{LanguageCodes.tab} in a location pointed to by the emacs-lisp
 variable @code{language-codes-file-name}, by default
-@file{"~/dictionaries/LanguageCodes.tab"}. Then, to activate
-mulvoc-mode, type @command{M-x mulvoc-mode} in a buffer where
-you want it turned on. The first time you start it in an Emacs
-session, it will load the language data, which is currently
-quite slow. (I plan to optimize it for when there is only one
-dictionary file; the slow stuff is putting together overlapping
-definitions from multiple dictionaries.)
+@file{~/dictionaries/LanguageCodes.tab}. Then, to activate
+mulvoc-mode, type @command{M-x mulvoc-mode} in a buffer where you want
+it turned on. The first time you start it in an Emacs session, it will
+load the language data, which is currently quite slow. (I plan to
+optimize it for when there is only one dictionary file; the slow stuff
+is putting together overlapping definitions from multiple
+dictionaries.)
 
 @node  Configuration,  , Installation, Top
 @comment  node-name,  next,  previous,  up
 @chapter Configuration
+
+Some parts of Mulvoc still have to be configured by editing your
+@file{.emacs}, and some are set up using Custom.
 
 @menu
 * Enabling Mulvoc::              Enabling Mulvoc triggers
@@ -264,3 +270,5 @@ containing dictionaries.
 the filenames (within each directory in
 @code{mulvoc-dictionaries-directories}) holding the vocabulary.  It
 should normally be @code{".csv$"}. 
+
+@bye
