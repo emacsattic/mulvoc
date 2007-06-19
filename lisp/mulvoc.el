@@ -1,5 +1,5 @@
 ;;;; mulvoc.el -- multi-lingual vocabulary
-;;; Time-stamp: <2006-05-01 12:29:35 jcgs>
+;;; Time-stamp: <2007-03-14 17:49:16 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -18,7 +18,6 @@
 ;;; Written by John C G Sturdy in October 2004
 ;;; IPR declaration: entirely my original work
 
-(provide 'mulvoc)
 (require 'thingatpt)
 (require 'csv)
 (require 'language-codes)
@@ -185,7 +184,10 @@ Meant for debugging loading of the dictionary."
 	mulvoc-flashcard-meanings nil))
 
 (defvar mulvoc-parts-of-speech
-  '(("Noun") ("Verb") ("Adjective") ("Adverb") ("Phrase"))
+  '(("Noun") ("Verb")
+    ("Adjective") ("Adverb")
+    ("Preposition") ("Conjunction")
+    ("Phrase"))
   "All the parts of speech currently known in the system.
 Stored as an alist, for giving to completing-read.")
 
@@ -270,13 +272,17 @@ properties of that language, such as input method.")
 
 (make-variable-buffer-local 'mulvoc-file-columns)
 
-(defun mulvoc-read-csv-file (dict-file)
-  "Read the vocabulary from comma separate values DICT-FILE."
+(defun mulvoc-read-csv-file (dict-file &optional fast)
+  "Read the vocabulary from comma separate values DICT-FILE.
+With optional FAST, do not merge with existing vocabulary.
+Use FAST only when you know there will be no overlaps,
+e.g. on the first file."
   (interactive "fRead vocabulary from csv file: ")
   (unless (interactive-p) (message "Reading vocabulary from file %s" dict-file))
   (save-window-excursion
     (let* ((csv-unquoted-entry-regexp  "\\(^\\|,\\)[\t ]*\\([^,\n]*\\)[\t ]*\\(,\\|,?$\\)")
-	   (csv-quoted-entry-regexp "\\(^\\|,\\)[\t ]*\"\\(\\([^\"]\\|\n\\|\\\\\"\\)*\\)\"[\t ]*\\(,\\|,?$\\)")(was-visited (get-file-buffer dict-file))
+	   (csv-quoted-entry-regexp "\\(^\\|,\\)[\t ]*\"\\(\\([^\"]\\|\n\\|\\\\\"\\)*\\)\"[\t ]*\\(,\\|,?$\\)")
+	   (was-visited (get-file-buffer dict-file))
 	   (truename (file-truename dict-file))
 	   (word-array-pair (assoc truename mulvoc-words-from-files))
 	   (mulvoc-file-word-array (cdr word-array-pair))
@@ -308,7 +314,7 @@ properties of that language, such as input method.")
 	  (setq i (1+ i))
 	  (when (zerop (% i rows-per-percent))
 	    (message "Adding %s: %d%%" dict-file (/ (* i 100) (length dict))))
-	  (mulvoc-define-meaning meaning)))
+	  (mulvoc-define-meaning meaning fast)))
       (unless (or mulvoc-keep-dictionary-buffers
 		  was-visited)
 	(kill-buffer nil)))))
@@ -327,22 +333,32 @@ used in the csv files that are read during mulvoc-setup.")
     (let ((mulvoc-in-setup t)
 	  (setup-started (current-time)))
       (run-hooks 'mulvoc-setup-hook)
-      (message "Mulvoc loading dictionaries matching %s from %s"
-	       mulvoc-dictionaries-pattern
-	       (mapconcat 'identity mulvoc-dictionaries-directories ", "))
-      (dolist (dict-directory mulvoc-dictionaries-directories)
-	(message "Setting coding system for files in %s to be utf-8-unix" dict-directory)
-	(add-to-list 'file-coding-system-alist
-		     (cons (concat dict-directory
-				   "/.+\\.csv")
-			   'utf-8-unix)))
-      (mapcar 'mulvoc-read-directory mulvoc-dictionaries-directories)
+      (if (and (stringp mulvoc-cache-file)
+	       (file-exists-p mulvoc-cache-file))
+	  (load-file mulvoc-cache-file)
+	(message "Mulvoc loading dictionaries matching %s from %s"
+		 mulvoc-dictionaries-pattern
+		 (mapconcat 'identity mulvoc-dictionaries-directories ", "))
+	(dolist (dict-directory mulvoc-dictionaries-directories)
+	  (message "Setting coding system for files in %s to be utf-8-unix" dict-directory)
+	  (add-to-list 'file-coding-system-alist
+		       (cons (concat dict-directory
+				     "/.+\\.csv")
+			     'utf-8-unix)))
+	(mapcar 'mulvoc-read-directory mulvoc-dictionaries-directories)
+	(when (and (stringp mulvoc-cache-file)
+		   (file-directory-p (file-name-directory mulvoc-cache-file)))
+	  (mulvoc-dump-all-meanings mulvoc-cache-file)))
       (run-hooks 'mulvoc-post-setup-hook)
       (let* ((setup-ended (current-time))
 	     (setup-duration (subtract-time setup-ended setup-started)))
 	(message "Reading vocabulary took %S seconds... got %d words in %d languages"
 		 setup-duration
 		 (mulvoc-count-words) (mulvoc-count-languages)))))
-  (setq mulvoc-loaded t))
+  (setq mulvoc-loaded t
+	mulvoc-abbrev-setup-done nil	; in case it got triggered recursively while loading vocab data
+	))
+
+(provide 'mulvoc)
 
 ;;; end of mulvoc.el
