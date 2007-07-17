@@ -1,5 +1,5 @@
 ;;;; mulvoc.el -- multi-lingual vocabulary
-;;; Time-stamp: <2007-03-14 17:49:16 jcgs>
+;;; Time-stamp: <2007-06-28 13:14:31 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -232,6 +232,7 @@ properties of that language, such as input method.")
   "Convert STRING to a gender."
   (cdr (assoc (substring string 0 1) mulvoc-gender-strings)))
 
+;;;###autoload
 (defun mulvoc-ensure-loaded ()
   "Ensure that mulvoc has loaded its dictionaries."
   (unless mulvoc-loaded
@@ -335,7 +336,10 @@ used in the csv files that are read during mulvoc-setup.")
       (run-hooks 'mulvoc-setup-hook)
       (if (and (stringp mulvoc-cache-file)
 	       (file-exists-p mulvoc-cache-file))
-	  (load-file mulvoc-cache-file)
+	  (if (and mulvoc-load-while-idle
+		   (fboundp 'load-lisp-while-idle))
+	      (load-lisp-while-idle mulvoc-cache-file)
+	    (load-file mulvoc-cache-file))
 	(message "Mulvoc loading dictionaries matching %s from %s"
 		 mulvoc-dictionaries-pattern
 		 (mapconcat 'identity mulvoc-dictionaries-directories ", "))
