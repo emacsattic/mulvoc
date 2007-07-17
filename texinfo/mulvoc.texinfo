@@ -118,6 +118,7 @@ will appear.  Mulvoc has three ways of displaying the translations:
 * Language names::              Language names
 * Cell format::                 Data cell format
 * Special columns::             Special columns
+* Cache files::                 A faster load format
 @end menu
 
 Mulvoc's vocabulary files are in the Comma Separated Value (CSV) format
@@ -175,6 +176,20 @@ put in the same cell, separated by commas.
 
 Some of the column titles are not for languages, but are used
 specially by Mulvoc.
+
+@node Cache files,  , Special columns, Vocabulary files
+@comment  node-name,  next,  previous,  up
+@section Vocabulary cache files
+
+Vocabulary data can take quite a while to load, for large
+vocabularies.
+
+Mulvoc can also write your gathered vocabulary data to a single file,
+for (hopefully) faster loading. The name of the file is stored in the
+emacs-lisp variable @code{mulvoc-cache-file}. If the variable
+@code{mulvoc-load-while-idle} is non-nil, the loading will occur while
+Emacs is otherwise idle, to avoid a wait which is still potentially
+quite long.
 
 @node  Installation, Configuration, Vocabulary files, Top
 @comment  node-name,  next,  previous,  up
