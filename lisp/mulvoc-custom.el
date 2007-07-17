@@ -1,5 +1,5 @@
 ;;;; mulvoc-custom.el -- custom definitions for mulvoc
-;;; Time-stamp: <2006-04-21 08:58:47 jcgs>
+;;; Time-stamp: <2007-06-27 20:42:45 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -38,12 +38,25 @@ This happens in buffers in which mulvoc-setup-hook-function has been run."
   "*Where to find the dictionary CSV files."
   :group 'mulvoc)
 
-(defcustom mulvoc-dictionaries-pattern ".csv$"
+(defcustom mulvoc-dictionaries-pattern "\\.csv$"
   "*Pattern describing which directories in mulvoc-dictionaries-directories to load."
   :type 'regexp
   :group 'mulvoc)
 
-(defcustom mulvoc-etc-directory "i:/common/open-projects/mulvoc/etc/"
+(defcustom mulvoc-cache-file "~/mulvoc/vocab-cache.el"
+  "Name of file for caching data from csv files.
+If this file exists, it is loaded instead of the csv files.
+If it does not exist, but the value is a string and the
+directory part of it does exist, the file is created after
+loading the csv files."
+  :type 'file
+  :group 'mulvoc)
+
+(defcustom mulvoc-load-while-idle t
+  "Whether to load the cached vocabulary data while Emacs is idle.
+Otherwise, you can have quite a long wait.")
+
+(defcustom mulvoc-etc-directory "~/mulvoc/mulvoc/etc/"
   "Directory containing language-related data other than the dictionaries."
   :type 'directory
   :group 'mulvoc)
@@ -54,8 +67,15 @@ This happens in buffers in which mulvoc-setup-hook-function has been run."
   :group 'mulvoc)
 
 (defcustom mulvoc-displayed-languages '("DUT" "GER" "NRR" "GLI")
-  "Which languages to display in.
+  "Which languages to display in, as a list of string.
 If nil, all known languages are used."
+  :group 'mulvoc)
+
+(defcustom mulvoc-read-languages '("DUT" "GER" "NRR" "GLI")
+  "Which languages to store in the data structures, as a list of strings.
+Languages not on the list are ignored.
+If t, all given languages are read.
+If nil, mulvoc-displayed-languages is used instead."
   :group 'mulvoc)
 
 (defcustom mulvoc-setup-hook nil
