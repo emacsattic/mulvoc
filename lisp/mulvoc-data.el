@@ -1,5 +1,5 @@
 ;;;; mulvoc-data.el -- main data handling for mulvoc
-;;; Time-stamp: <2006-04-18 14:35:22 john>
+;;; Time-stamp: <2007-03-15 10:01:04 john>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -15,7 +15,7 @@
 ;;  with this program; if not, write to the Free Software Foundation, Inc.,
 ;;  59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-(provide 'mulvoc-data)
+(require 'cl)
 
 (defvar mulvoc-words (make-vector 1511 nil)
   "Obarray for mulvoc functions.
@@ -35,9 +35,8 @@ Irish), could have the following value on its symbol:
         (verb . <alist of translations of the verb fear>))
  (IRL . (noun . (ENG . \"man\") (IRL \"fear\"))))
 
-I'm not sure what to do about synonyms yet; whether they get separate entries
-but with the same key, on the lowest-level alists; or whether they replace
-the string (at the lowest level above) with a list of strings.")
+Synonyms replace the string (at the lowest level above) with a list of
+strings.")
 
 (defvar mulvoc-phrase-ending-words (make-vector 1511 nil)
   "Obarray for mulvoc phrase lookup.
@@ -100,10 +99,13 @@ word comes first in the list.")
 (defvar mulvoc-decline-pattern "\\([a-z0-9]+\\): ?\\(.+\\)"
   "Pattern for declensions, cases etc.")
 
-(defun mulvoc-define-meaning (new-meaning)
+(defun mulvoc-define-meaning (new-meaning &optional fast)
   "Record the definitions of NEW-MEANING which is an alist of language.word pairs.
 This is the form in which csv-parse-buffer returns each row of the
-input file."
+input file.
+With optional FAST, do not merge with existing vocabulary.
+Use FAST only when you know there will be no overlaps,
+e.g. on the first file."
   (when mulvoc-debug
     (message "  Defining meaning-group %S" new-meaning)
     (message "type-pair is %S" (assoc "#TYPE" new-meaning)))
@@ -116,14 +118,14 @@ input file."
   ;; example, be both a noun and a verb in the same language. This
   ;; list, in turn, is part of a list of words of the same spelling in
   ;; various languages. For example, the string "fear" is a noun and a
-  ;; verb in English, and a noun in Irish (Gaelic))
+  ;; verb in English, and a noun in Irish (Gaelic)).
 
   ;; This is the form in which our argument, new-meaning, comes. We
-  ;; must look up each word in new-meaning, to see whether it is part
-  ;; of any existing meanings, as reached through any of the languages
-  ;; in the meaning so far. If it is, we collect up all the
-  ;; language-word pairs from that meaning too, and make them part of
-  ;; our new meaning.
+  ;; must look up, in our existing data, each word that occurs in
+  ;; new-meaning, to see whether it is part of any existing meanings,
+  ;; as reached through any of the languages in the meaning so far. If
+  ;; it is, we collect up all the language-word pairs from that
+  ;; meaning too, and make them part of our new meaning.
 
   ;; Having done that, we then go through all the words which have
   ;; contributed to this collected meaning, and set them to use this
@@ -147,131 +149,145 @@ input file."
   (let* ((gathered-meaning nil)
 	 (origins nil)
 	 (type-pair (assoc "#TYPE" new-meaning))
-	 (sense-pair (assoc "#SENSE" new-meaning))
-	 (type (if type-pair
-		   (if (and sense-pair
-			    (not (string= (cdr sense-pair) "")))
-		       (cons (intern (cdr type-pair))
-			     (intern (cdr sense-pair)))
-		     (intern (cdr type-pair)))
-		 '*unknown-type*))
-	 )
-    (unless (assoc (cdr type-pair) mulvoc-parts-of-speech)
-      (setq mulvoc-parts-of-speech
-	    (cons (list (cdr type-pair))
-		  mulvoc-parts-of-speech)))
-    ;; First a loop to gather the meaning
-    (dolist (language-word new-meaning)
-      (when mulvoc-debug (message "   language-word=%S" language-word))
-      (if (null (car language-word))
-	  (message "Warning: unspecified language for %S" (cdr language-word))
-	(let* ((raw-data (cdr language-word))
-	       (language-string (upcase (car language-word)))
-	       (first-form-of-word nil))
-	  (cond
-	   ((equal raw-data "") nil)
-	   ((= (aref language-string 0) ?#)
-	    (when mulvoc-debug (message "    Column pragma %s:%S" language-string raw-data))
+	 (sense-pair (assoc "#SENSE" new-meaning)))
+    (cond
+     ((null type-pair)
+	(setq type-pair (cons "#TYPE" "unspecified")))
+     ((equal (cdr type-pair) "")
+      (rplacd type-pair "unspecified")))
+    (let* ((type (if type-pair
+		     (if (and sense-pair
+			      (stringp (cdr sense-pair))
+			      (not (string= (cdr sense-pair) "")))
+			 (cons (intern (cdr type-pair))
+			       (intern (cdr sense-pair)))
+		       (intern (cdr type-pair)))
+		   '*unknown-type*))
+	   (read-languages (or mulvoc-read-languages
+			       mulvoc-displayed-languages))
+	   (slow nil))
+      (unless (assoc (cdr type-pair) mulvoc-parts-of-speech)
+	(setq mulvoc-parts-of-speech
+	      (cons (list (cdr type-pair))
+		    mulvoc-parts-of-speech)))
+      ;; First a loop to gather the meaning
+      (dolist (language-word new-meaning)
+	(when mulvoc-debug (message "   language-word=%S" language-word))
+	(if (null (car language-word))
+	    (message "Warning: unspecified language for %S" (cdr language-word))
+	  (let* ((raw-data (cdr language-word))
+		 (language-string (if (stringp (car language-word))
+				      (upcase (car language-word))
+				    (symbol-name (car language-word))))
+		 (first-form-of-word nil))
 	    (cond
-	     ((and (string= language-string mulvoc-origin-string)
-		   (not (member raw-data origins)))
-	      ;; (message "Got raw origin data %S" raw-data)
-	      (setq origins (cons raw-data origins))
-	      ;; (message "Origins are now %S" origins)
-	      )))
-	   ((= (aref raw-data 0) ?#)
-	    (when mulvoc-debug (message "    Row pragma %S" raw-data))
-	    (let ((hook-result (run-hook-with-args-until-success 'mulvoc-comment-hook raw-data language-string)))
+	     ((equal raw-data "") nil)
+	     ((= (aref language-string 0) ?#)
+	      (when mulvoc-debug (message "    Column pragma %s:%S" language-string raw-data))
 	      (cond
-	       ((eq hook-result t) nil)
-	       ((consp hook-result)
-		(push hook-result gathered-meaning) ; todo: skip these when displaying etc
-		)
-	       ((stringp hook-result)
-		))))
-	   (t
-	    (let* ((words-string (downcase raw-data))
-		   (words-list (split-string words-string mulvoc-alias-separator-pattern)))
-	      (dolist (gendered-word-string words-list)
-		(let* ((gendered (string-match mulvoc-gender-pattern gendered-word-string))
-		       (gender (if gendered
-				   (mulvoc-gender-from-string (match-string 2 gendered-word-string))))
-		       (word-string (if gendered
-					(propertize (match-string 1 gendered-word-string)
-						    'gender gender)
-				      gendered-word-string))
-		       (declined (string-match mulvoc-decline-pattern word-string))
-		       (declension (if declined (match-string 1 word-string))))
-		  (when declined
-		    (setq word-string (propertize (match-string 2 word-string)
-						  'declension declension)))
-		  (when mulvoc-debug (message "    Gathering existing meanings linked through %S:%s" language-word word-string))
-		  (if declined
-		      (when (string-match "^[-~]" word-string)
-			(when mulvoc-debug
-			  (message "prepending first form of word %S to %S form %S"
-				   first-form-of-word declension word-string))
-			(setq word-string (propertize (concat first-form-of-word (substring word-string 1))
-						      'declension (get-text-property 0 'declension word-string)
-						      'gender (get-text-property 0 'gender first-form-of-word))))
-		    ;; if this was not a declined form, remember it as the base form
-		    (setq first-form-of-word word-string))
-		  (when (and (> (length word-string) 0)
-			     (> (length language-string) 0))
-		    (when mulvoc-file-word-array
-		      (intern word-string mulvoc-file-word-array))
-		    (when mulvoc-file-language-array
-		      (intern language-string mulvoc-file-language-array))
-		    (when mulvoc-debug
-		      (when gendered (message "got gendered word %S" word-string))
-		      (when declined (message "got declined word %S:%S, and first form was %S"
-					      declension word-string first-form-of-word)))
-		    (let* ((language (intern (language-code language-string))))
-		      (rplacd language-word
-			      (if (null (cdr words-list))
-				  ;; I think it's saying that if there's
-				  ;; only one word in this alias group,
-				  ;; keep it as a string, otherwise make a
-				  ;; list of them
-				  word-string
-				words-list))
-		      ;; if we do not yet have this language, add it to
-		      ;; the known languages
-		      (unless (assoc language mulvoc-languages)
-			(push (list language) mulvoc-languages))
-		      (let* ((word (intern word-string mulvoc-words))
-			     (old-meaning (mulvoc-get-meaning language type word)))
-			(dolist (this-old-language-word-pair old-meaning)
-			  (if (eq (car this-old-language-word-pair) 'origins)
-			      (dolist (this-origin (cdr this-old-language-word-pair))
-				;; (message "getting old origin %S" this-origin)
-				(pushnew this-origin origins :test 'equal))
-			    (pushnew this-old-language-word-pair gathered-meaning :test 'equal)))
-			(pushnew (cons language word-string) gathered-meaning :test 'equal))))))))))))
-    ;; and now a loop to update all the words that contributed to the new meaning,
-    ;; so they all use it
-    (setq gathered-meaning (cons (cons 'origins origins) gathered-meaning))
-    (when mulvoc-debug (message "Gathered meanings are %S" gathered-meaning))
-    (dolist (language-word (cdr gathered-meaning))
-      (let ((language (car language-word))
-	    (word (cdr language-word)))
-	(when mulvoc-debug (message " Defining %S %S %S to be %S" word language type gathered-meaning))
-	(if (or (stringp language)
-		(symbolp language))
-	    (if (stringp word)
-		(mulvoc-set-symbol-language-type-meaning
-		 word
-		 language
-		 type
-		 gathered-meaning)
-	      (dolist (this-word word)
-		(mulvoc-set-symbol-language-type-meaning
-		 this-word
-		 language
-		 type
-		 gathered-meaning)))
-	  (message "Warning: non-string, non-symbol as language: %S" language))))
-    gathered-meaning))
+	       ((and (string= language-string mulvoc-origin-string)
+		     (not (member raw-data origins)))
+		;; (message "Got raw origin data %S" raw-data)
+		(setq origins (cons raw-data origins))
+		;; (message "Origins are now %S" origins)
+		)))
+	     ((= (aref raw-data 0) ?#)
+	      (when mulvoc-debug (message "    Row pragma %S" raw-data))
+	      (let ((hook-result (run-hook-with-args-until-success 'mulvoc-comment-hook raw-data language-string)))
+		(cond
+		 ((eq hook-result t) nil)
+		 ((consp hook-result)
+		  (push hook-result gathered-meaning) ; todo: skip these when displaying etc
+		  )
+		 ((stringp hook-result)
+		  ))))
+	     ((or (eq read-languages t)
+		  (member language-string read-languages))
+	      (let* ((words-string (downcase raw-data))
+		     (words-list (split-string words-string mulvoc-alias-separator-pattern)))
+		(dolist (gendered-word-string words-list)
+		  (let* ((gendered (string-match mulvoc-gender-pattern gendered-word-string))
+			 (gender (if gendered
+				     (mulvoc-gender-from-string (match-string 2 gendered-word-string))))
+			 (word-string (if gendered
+					  (propertize (match-string 1 gendered-word-string)
+						      'gender gender)
+					gendered-word-string))
+			 (declined (string-match mulvoc-decline-pattern word-string))
+			 (declension (if declined (match-string 1 word-string))))
+		    (when declined
+		      (setq word-string (propertize (match-string 2 word-string)
+						    'declension declension)))
+		    (when mulvoc-debug (message "    Gathering existing meanings linked through %S:%s" language-word word-string))
+		    (if declined
+			(when (string-match "^[-~]" word-string)
+			  (when mulvoc-debug
+			    (message "prepending first form of word %S to %S form %S"
+				     first-form-of-word declension word-string))
+			  (setq word-string (propertize (concat first-form-of-word (substring word-string 1))
+							'declension (get-text-property 0 'declension word-string)
+							'gender (get-text-property 0 'gender first-form-of-word))))
+		      ;; if this was not a declined form, remember it as the base form
+		      (setq first-form-of-word word-string))
+		    (when (and (> (length word-string) 0)
+			       (> (length language-string) 0))
+		      (when mulvoc-file-word-array
+			(intern word-string mulvoc-file-word-array))
+		      (when mulvoc-file-language-array
+			(intern language-string mulvoc-file-language-array))
+		      (when mulvoc-debug
+			(when gendered (message "got gendered word %S" word-string))
+			(when declined (message "got declined word %S:%S, and first form was %S"
+						declension word-string first-form-of-word)))
+		      (let* ((language (intern (language-code language-string))))
+			(rplacd language-word
+				(if (null (cdr words-list))
+				    ;; I think it's saying that if there's
+				    ;; only one word in this alias group,
+				    ;; keep it as a string, otherwise make a
+				    ;; list of them
+				    word-string
+				  words-list))
+			;; if we do not yet have this language, add it to
+			;; the known languages
+			(unless (assoc language mulvoc-languages)
+			  (push (list language) mulvoc-languages))
+			(let* ((word (intern word-string mulvoc-words))
+			       (old-meaning (mulvoc-get-meaning language type word)))
+			  ;; (message "old-meaning of (%S %S %S) is %S" language type word old-meaning)
+			  (when old-meaning (setq slow t))
+			  (dolist (this-old-language-word-pair old-meaning)
+			    (if (eq (car this-old-language-word-pair) 'origins)
+				(dolist (this-origin (cdr this-old-language-word-pair))
+				  ;; (message "getting old origin %S" this-origin)
+				  (pushnew this-origin origins :test 'equal))
+			      ;; todo: make this merge multiple words in the same language, into a list, just as though they were read as a comma-separated list in one file -- this will be more efficient later as well, when re-reading dumped data
+			      (pushnew this-old-language-word-pair gathered-meaning :test 'equal)))
+			  (pushnew (cons language word-string) gathered-meaning :test 'equal))))))))))))
+      ;; and now a loop to update all the words that contributed to the new meaning,
+      ;; so they all use it
+      (setq gathered-meaning (cons (cons 'origins origins) gathered-meaning))
+      (when mulvoc-debug (message "Gathered meanings are %S" gathered-meaning))
+      (dolist (language-word (cdr gathered-meaning))
+	(let ((language (car language-word))
+	      (word (cdr language-word)))
+	  (when mulvoc-debug (message " Defining %S %S %S to be %S" word language type gathered-meaning))
+	  (if (or (stringp language)
+		  (symbolp language))
+	      (if (stringp word)
+		  (mulvoc-set-symbol-language-type-meaning
+		   word
+		   language
+		   type
+		   gathered-meaning)
+		(dolist (this-word word)
+		  (mulvoc-set-symbol-language-type-meaning
+		   this-word
+		   language
+		   type
+		   gathered-meaning)))
+	    (message "Warning: non-string, non-symbol as language: %S" language))))
+      gathered-meaning)))
 
 (defun mulvoc-define-phrase (phrase)
   "Define PHRASE in the phrase obarray, to point to PHRASE in the words obarray."
@@ -284,5 +300,74 @@ input file."
 		 (cdr words)))
       (set (intern (car words) mulvoc-phrase-ending-words)
 	   (cons phrase (cdr words))))))
+
+(defun mulvoc-all-meanings ()
+  "Return a list of all meanings."
+  (let ((meanings-hash (makehash 'equal))
+	(meanings-list nil))
+    (mapatoms
+     (lambda (word-atom)
+       (when (and word-atom (boundp word-atom))
+	 (let ((word-languages (symbol-value word-atom)))
+	   ;; (message "  word-languages=%S" word-languages)
+	   (dolist (language-meanings word-languages)
+	     ;; (message "    language-meanings=%S" language-meanings)
+	     (dolist (meaning (cdr language-meanings))
+	       ;; (message "      meaning=%S" meaning)
+	       (puthash meaning meaning meanings-hash))))))
+     mulvoc-words)
+    (maphash (lambda (key value)
+	       (setq meanings-list (cons key meanings-list)))
+	     meanings-hash)
+    meanings-list))
+
+(defun dm (m)
+  "Define meaning M.
+This is for use in the file produced by mulvoc-dump-all-meanings."
+  (mulvoc-define-meaning
+   (cons (cons "#TYPE"
+	       (symbol-name (if (consp (car m))
+				(caar m)
+			      (car m))))
+	 (cons (cons "#SENSE"
+		     (if (consp (car m))
+			 (symbol-name (cdar m))
+		       nil))
+	       (cdr m)))))
+
+(defun mulvoc-dump-all-meanings (file)
+  "Put a list of all known meanings into FILE."
+  (interactive "FFile to store vocabulary meanings in: ")
+  (mulvoc-ensure-loaded)
+  (find-file file)
+  (set-buffer-file-coding-system 'utf-8)
+  (erase-buffer)
+  (insert ";; -*- coding: utf-8 -*-\n"
+	  ";; mulvoc meanings dumped at " (current-time-string)
+	  " by " user-mail-address
+	  " on " (system-name) "\n")
+  (let* ((meanings (mulvoc-all-meanings))
+	 (n-meanings (length meanings))
+	 (per-percent (/ n-meanings 100))
+	 (standard-output (current-buffer))
+	 (blank-symbol (intern ""))
+	 (i 1)
+	 (i-percent 0))
+    (message "%d meanings being saved to file" n-meanings)
+    (dolist (meaning meanings)
+      (when (eq (caadr meaning) 'origins)
+	(rplacd meaning (cddr meaning)))
+      (princ "(dm '")
+      (prin1 meaning)
+      (princ (format ") ; %d\n" i))
+      (setq i (1+ i))
+      (when (> (/ i 100) i-percent)
+	(setq i-percent (/ i 100))
+	(princ (format "(message \"loading vocab ... %d%%%%\")\n" i-percent))))
+    (message "%d meanings being saved to file" n-meanings))
+  (insert ";; end of meanings dump\n")
+  (basic-save-buffer))
+
+(provide 'mulvoc-data)
 
 ;;; end of mulvoc-data.el
