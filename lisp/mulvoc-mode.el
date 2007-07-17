@@ -1,5 +1,5 @@
 ;;;; mulvoc-mode.el -- mulvoc presented through a minor mode -- its original use
-;;; Time-stamp: <2006-04-18 14:35:19 john>
+;;; Time-stamp: <2006-11-26 13:24:31 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -41,6 +41,12 @@
       (tooltip-show (apply 'format format args))
     (apply 'message args)))
 
+(defvar mulvoc-show-translations-from-language t
+  "Which language to show translations from; t to display translations from all languages.
+Has a different value in each buffer.")
+
+(make-variable-buffer-local 'mulvoc-show-translations-from-language)
+
 (defun mulvoc-word-display-string (word)
   "Return a display string for WORD.
 The languages listed in mulvoc-displayed-languages are shown."
@@ -50,54 +56,61 @@ The languages listed in mulvoc-displayed-languages are shown."
 	got
       (if (boundp word)
 	  (let ((value (symbol-value word))
-		(word-string (symbol-name word))
-		(languages (if mulvoc-displayed-languages
-			       (mapcar (function
-					(lambda (lang)
-					  (if (symbolp lang)
-					    lang
-					    (intern lang))))
-				       mulvoc-displayed-languages)
-			     (mapcar 'identity ; symbol-name  
-				     (mapcar 'car
-					     mulvoc-languages))))
-		(collected nil)
-		(causes nil) ; language-words that might make this be displayed
-		)
-	    (dolist (from-language value)
-	      ;; (message "Scanning for from-language %S" from-language)
-	      (dolist (type (cdr from-language))
-		;; (message "  Scanning for type %S within %S" type from-language)
-		(dolist (language languages)
-		  ;; (message "    Scanning %S for language %S and %S for cause %S" type language (cdr type) word-string)
-		  (let ((got-language (assoc language type))
-			(got-cause (rassoc word-string (cdr type))))
-		    (when got-language
-		      ;; (message "      Got language %S" got-language)
-		      (pushnew got-language collected :test 'equal))
-		    (when got-cause
-		      ;; (message "      Got cause %S" got-cause)
-		      (pushnew (car got-cause) causes :test 'equal))))))
-	    ;; (message "causes are %S" causes)
-	    (setq collected
-		  (delete-if (lambda (item)
-			       ;; (message "looking at %S, %s" item (if (member (car item) causes) "will delete" "will not delete"))
-			       (member (car item) causes))
-			     collected))
-	    (let ((string (format "%s:%s = %s"
-				  (mapconcat 'symbol-name
-					     causes
-					     ","
-					     )
-				  word-string
-				  (mapconcat (lambda (pair)
-					       (format "%s: %s"
-						       (car pair)
-						       (mulvoc-word-as-string (cdr pair))))
-					     collected
-					     ", "))))
-	      (put word 'display-string string)
-	      string))
+		(word-string (symbol-name word)))
+	    (when (or (eq mulvoc-show-translations-from-language t)
+		      (member word-string (mapcar #'(lambda (w)
+						      (cdr
+						       (assoc mulvoc-show-translations-from-language
+							      (cdr w))))
+						  (cdr (assoc mulvoc-show-translations-from-language value)))))
+	      (let ( ;; todo: avoid calculating this each time around
+		    (languages (if mulvoc-displayed-languages
+				   (mapcar (function
+					    (lambda (lang)
+					      (if (symbolp lang)
+						  lang
+						(intern lang))))
+					   mulvoc-displayed-languages)
+				 (mapcar 'identity ; symbol-name  
+					 (mapcar 'car
+						 mulvoc-languages))))
+		    (collected nil)
+		    (causes nil) ; language-words that might make this be displayed
+		    )
+		(dolist (from-language value)
+		  ;; (message "Scanning for from-language %S" from-language)
+		  (dolist (type (cdr from-language))
+		    ;; (message "  Scanning for type %S within %S" type from-language)
+		    (dolist (language languages)
+		      ;; (message "    Scanning %S for language %S and %S for cause %S" type language (cdr type) word-string)
+		      (let ((got-language (assoc language type))
+			    (got-cause (rassoc word-string (cdr type))))
+			(when got-language
+			  ;; (message "      Got language %S" got-language)
+			  (pushnew got-language collected :test 'equal))
+			(when got-cause
+			  ;; (message "      Got cause %S" got-cause)
+			  (pushnew (car got-cause) causes :test 'equal))))))
+		;; (message "causes are %S" causes)
+		(setq collected
+		      (delete-if (lambda (item)
+				   ;; (message "looking at %S, %s" item (if (member (car item) causes) "will delete" "will not delete"))
+				   (member (car item) causes))
+				 collected))
+		(let ((string (format "%s:%s = %s"
+				      (mapconcat 'symbol-name
+						 causes
+						 ","
+						 )
+				      word-string
+				      (mapconcat (lambda (pair)
+						   (format "%s: %s"
+							   (car pair)
+							   (mulvoc-word-as-string (cdr pair))))
+						 collected
+						 ", "))))
+		  (put word 'display-string string)
+		  string))))
 	nil))))
 
 (defun mulvoc-command-hook-function ()
@@ -139,9 +152,9 @@ most immediately preceding one."
 	(let ((ob (intern-soft word mulvoc-words)))
 	  (if ob
 	      (let ((translation (mulvoc-word-display-string ob)))
-		(setq mulvoc-expanded-words
-		      (cons ob mulvoc-expanded-words))
 		(when (stringp translation)
+		  (setq mulvoc-expanded-words
+			(cons ob mulvoc-expanded-words))
 		  (mulvoc-add-overlay start end translation)
 		  (when mulvoc-decorated-buffer
 		    (mulvoc-decorate-word start end translation))
@@ -158,19 +171,29 @@ most immediately preceding one."
 			  (mulvoc-decorate-word match end translation))
 			(mulvoc-display "%s" translation)))))))))))))
 
+(defvar mulvoc-abbrev-setup-done nil
+  "Whether mulvoc has yet set up its abbreviation system.")
+
 ;;;###autoload
 (defun mulvoc-abbrev-setup ()
   "Set up mulvoc's abbreviation system"
   (interactive)
+  (message "In mulvoc-abbrev-setup in %S" (current-buffer))
   (mulvoc-ensure-loaded)
-  (mapcar (lambda (word-obarray)
-	    (mapatoms (lambda (word-atom)
-			(let ((word-string (symbol-name word-atom)))
+  (unless 
+    mulvoc-abbrev-setup-done		; this was making it not work
+    (message "Defining...")
+    (mapcar (lambda (word-obarray)
+	      (message "Defining %S ..." word-obarray)
+	      (mapatoms (lambda (word-atom)
+			  (let ((word-string (symbol-name word-atom)))
 			    ;; todo: try to make this respect the existing abbrev function, you can get this using (symbol-function (intern-soft word-string global-abbrev-table))
-
-			  (define-abbrev global-abbrev-table word-string word-string 'mulvoc-abbrev-expander)))
-		      word-obarray))
-	  (list mulvoc-words mulvoc-phrase-ending-words))
+			    ;; (message "  Defining abbrev %s" word-string)
+			    (define-abbrev global-abbrev-table word-string word-string 'mulvoc-abbrev-expander)))
+			word-obarray))
+	    (list mulvoc-words mulvoc-phrase-ending-words))
+    (setq mulvoc-abbrev-setup-done t))
+  (message "Done mulvoc-abbrev-setup")
   (setq abbrev-mode t))
 
 ;;;; decorate words in region
@@ -252,7 +275,7 @@ Translations are displayed when point moves into the word, or the mouse goes ove
 		 recyled-element)
 	     (make-overlay begin end))))
       ;; (put-text-property 0 (length translation) 'face (cons 'italic t) translation)
-      ;; (overlay-put new-overlay 'face (cons 'bold t))
+      (put-text-property 0 (length translation) 'display '(height .6) translation)
       (overlay-put new-overlay 'evaporate t)
       (overlay-put new-overlay 'after-string (format " {%s}" translation))
       (overlay-put new-overlay 'modification-hooks '(mulvoc-overlay-modification-function))
