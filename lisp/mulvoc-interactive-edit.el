@@ -1,5 +1,5 @@
 ;;;; mulvoc-interactive-edit.el -- interactive vocabulary editing for mulvoc
-;;; Time-stamp: <2006-04-18 14:35:20 john>
+;;; Time-stamp: <2007-07-07 21:10:56 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -48,7 +48,7 @@ Optional second argument gives extra things that can be read as well as language
       (nreverse languages))))
 
 (defvar mulvoc-input-methods-for-languages
-  '(("JPN" . "japanese")
+  '(("JPN" . "japanese-hiragana")
     ("CMN" . "chinese-tonepy"))
   "Input methods for languages.")
 
