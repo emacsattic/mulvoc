@@ -1,5 +1,5 @@
 ;;;; language-codes.el -- map between language names and language codes
-;;; Time-stamp: <2006-05-01 13:33:41 jcgs>
+;;; Time-stamp: <2007-06-13 21:50:43 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -48,7 +48,7 @@ This data is from SIL International.")
 	     ,@forms)
 	 (bury-buffer)))))
 
-(defun language-code (language-name &optional country-code)
+(defun language-code (language-name &optional country-code standard-only)
   "Return the language code for LANGUAGE-NAME.
 If LANGUAGE-NAME is not recognized, it is returned unchanged.
 With optional second argument, return the country code instead."
@@ -63,15 +63,14 @@ With optional second argument, return the country code instead."
 	    (cadr pair))
 	(with-language-code-file
 	 (let ((case-fold-search t)
-	       (search-pattern (format "^\\([A-Z][A-Z][A-Z]\\)\t\\([A-Z][A-Z]\\)\t[A-Z]\t%s%s$"
-				       language-name
-				       (if nil
-					   "\\(,.*\\)?"
-					 "\\(, Standard\\)?"))))
-	   ;; (message "Searching for %s" search-pattern)
-	   (if (re-search-forward search-pattern
-				  (point-max) t)
-	       (let ((code (cons (match-string 1) (match-string 2))))
+	       (search-pattern-standard (format "^\\([A-Z][A-Z][A-Z]\\)\t\\([A-Z][A-Z]\\)\t[A-Z]\t%s\\(, Standard\\)?$"
+						language-name))
+	       (search-pattern-any (format "^\\([A-Z][A-Z][A-Z]\\)\t\\([A-Z][A-Z]\\)\t[A-Z]\t%s\\(,.*\\)?$"
+					   language-name)))
+	   ;; (message "Searching for %S or %S" search-pattern-standard search-pattern-any)
+	   (if (or (re-search-forward search-pattern-standard (point-max) t)
+		   (re-search-forward search-pattern-any (point-max) t))
+	       (let ((code (cons (match-string-no-properties 1) (match-string-no-properties 2))))
 		 (setq language-codes
 		       (cons (cons language-name
 				   code)
