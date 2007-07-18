@@ -159,6 +159,7 @@ Otherwise just the list of entries is returned."
 	  (setq match2 (match-string-no-properties 2))))
       ;; check whether quoted or unquoted fits better
       (setq match nil)
+      ;; (message "matchstart1=%S matchstart2=%S" matchstart1 matchstart2)
       (if matchstart1
 	  (if matchstart2
 	      (if (<= matchstart1 matchstart2)
