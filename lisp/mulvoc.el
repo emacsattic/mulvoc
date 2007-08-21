@@ -1,5 +1,5 @@
 ;;;; mulvoc.el -- multi-lingual vocabulary
-;;; Time-stamp: <2007-06-28 13:14:31 jcgs>
+;;; Time-stamp: <2007-08-21 13:56:43 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -180,6 +180,7 @@ Meant for debugging loading of the dictionary."
   (interactive)
   (setq mulvoc-loaded nil
 	mulvoc-words (make-vector (length mulvoc-words) nil)
+	mulvoc-phrase-ending-words (make-vector 1511 nil)
 	mulvoc-languages nil
 	mulvoc-flashcard-meanings nil))
 
@@ -233,10 +234,10 @@ properties of that language, such as input method.")
   (cdr (assoc (substring string 0 1) mulvoc-gender-strings)))
 
 ;;;###autoload
-(defun mulvoc-ensure-loaded ()
+(defun mulvoc-ensure-loaded (&optional originals-only)
   "Ensure that mulvoc has loaded its dictionaries."
   (unless mulvoc-loaded
-    (mulvoc-setup)))
+    (mulvoc-setup originals-only)))
 
 (defvar mulvoc-file-word-array nil
   "Where to collect this file's definitions. Rebound in reading code.")
@@ -327,14 +328,16 @@ mulvoc-ensure-loaded) being called from a mode hook function that gets
 used in the csv files that are read during mulvoc-setup.")
 
 ;;;###autoload
-(defun mulvoc-setup ()
-  "Set up the MUlti-Lingual VOcabulary system."
-  (interactive)
+(defun mulvoc-setup (&optional force)
+  "Set up the MUlti-Lingual VOcabulary system.
+With optional argument, ignore the cached vocabulary file and get the original data."
+  (interactive "P")
   (unless mulvoc-in-setup
     (let ((mulvoc-in-setup t)
 	  (setup-started (current-time)))
       (run-hooks 'mulvoc-setup-hook)
-      (if (and (stringp mulvoc-cache-file)
+      (if (and (not force)
+	       (stringp mulvoc-cache-file)
 	       (file-exists-p mulvoc-cache-file))
 	  (if (and mulvoc-load-while-idle
 		   (fboundp 'load-lisp-while-idle))
