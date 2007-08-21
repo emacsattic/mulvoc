@@ -1,5 +1,5 @@
 ;;;; mulvoc-data.el -- main data handling for mulvoc
-;;; Time-stamp: <2007-03-15 10:01:04 john>
+;;; Time-stamp: <2007-08-10 00:04:52 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -335,10 +335,16 @@ This is for use in the file produced by mulvoc-dump-all-meanings."
 		       nil))
 	       (cdr m)))))
 
-(defun mulvoc-dump-all-meanings (file)
+(defun mulvoc-compile-vocabulary-cache ()
+  "Compile a vocabulary cache file."
+  (interactive "FFile to store vocabulary meanings in: ")
+  (mulvoc-clear-dictionary)
+  (mulvoc-dump-all-meanings t))
+
+(defun mulvoc-dump-all-meanings (file &optional rebuild)
   "Put a list of all known meanings into FILE."
   (interactive "FFile to store vocabulary meanings in: ")
-  (mulvoc-ensure-loaded)
+  (mulvoc-ensure-loaded rebuild)
   (find-file file)
   (set-buffer-file-coding-system 'utf-8)
   (erase-buffer)
@@ -353,7 +359,7 @@ This is for use in the file produced by mulvoc-dump-all-meanings."
 	 (blank-symbol (intern ""))
 	 (i 1)
 	 (i-percent 0))
-    (message "%d meanings being saved to file" n-meanings)
+    (message "saving %d meanings to file %s" n-meanings file)
     (dolist (meaning meanings)
       (when (eq (caadr meaning) 'origins)
 	(rplacd meaning (cddr meaning)))
@@ -364,7 +370,7 @@ This is for use in the file produced by mulvoc-dump-all-meanings."
       (when (> (/ i 100) i-percent)
 	(setq i-percent (/ i 100))
 	(princ (format "(message \"loading vocab ... %d%%%%\")\n" i-percent))))
-    (message "%d meanings being saved to file" n-meanings))
+    (message "%d meanings saved to file %s" n-meanings file))
   (insert ";; end of meanings dump\n")
   (basic-save-buffer))
 
