@@ -1,5 +1,5 @@
 ;;;; mulvoc-writer.el -- write mulvoc data structures out to file
-;;; Time-stamp: <2006-05-01 14:25:14 jcgs>
+;;; Time-stamp: <2007-08-21 14:33:55 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -125,6 +125,58 @@ This way, all strings should sort before any non-strings."
 	  (incf count)))
       (>= count (if n-required n-required (length languages))))))
 
+(defun mulvoc-html-writer-0 (file dict-as-list coding-system languages)
+  "Helper function for mulvoc-write-html and others."
+  (let ((empty (if (assoc 'empty-cell-text options)
+		   (cdr (assoc 'empty-cell-text options))
+		 ""))
+	(cell-opts (if (assoc 'cell-options options)
+		       (cdr (assoc 'cell-options options))
+		     "")))
+    (save-excursion 
+      (find-file file)
+      (erase-buffer)
+      (insert "<html><head>\n")
+      (insert "<title>Glossary</title>")
+      (insert "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n")
+      (insert "</head>\n<body>\n")
+      (insert "<table" (if (assoc 'table-options options)
+			   (cdr (assoc 'table-options options))
+			 "")
+	      ">\n")
+      (insert "  <tr>\n")
+      (dolist (language languages)
+	(insert "    <th>" 
+		(cond
+		 ((stringp language)
+		  language)
+		 ((symbolp language)
+		  (symbol-name language))
+		 (t (prin1-to-string language)))
+		"</th>\n"))
+      (insert "  </tr>\n")
+      (dolist (row dict-as-list)
+	(when (mulvoc-writer-worthy-row row languages n-required)
+	  (insert "  <tr>\n")
+	  (dolist (cell row)
+	    (if (null (cdr cell))
+		(insert "    <td" cell-opts ">" empty "</td>\n")
+	      (let* ((language (car cell))
+		     (language-name (cond
+				     ((stringp language) language)
+				     ((symbolp language) (symbol-name language))
+				     (t (prin1-to-string language)))))
+		(insert "    <td" cell-opts " lang=\""
+			;; (language-code-3-to-2 language-name)
+			language-name
+			"\">"))
+	      (insert (cdr cell))
+	      (insert "</td>\n")))
+	  (insert "  </tr>\n")))
+      (insert "</table>\n")
+      (insert "<body>")
+      (basic-save-buffer))))
+
 (defun mulvoc-write-html (file &optional dictionary words languages n-required options)
   "Write the dictionary into FILE as HTML.
 If optional second argument given, that is the dictionary to write (as an obarray).
@@ -156,59 +208,23 @@ Valid keys are table-options, empty-cell-text, synonym-separator, and cell-optio
 					       (cons 'cell-options cell-opts)))))
   (mulvoc-write-dictionary
    file dictionary words languages
-   (lambda (file dict-as-list coding-system languages)
-     (let ((empty (if (assoc 'empty-cell-text options)
-		      (cdr (assoc 'empty-cell-text options))
-		    ""))
-	   (cell-opts (if (assoc 'cell-options options)
-			  (cdr (assoc 'cell-options options))
-			"")))
-       (save-excursion 
-	 (find-file file)
-	 (erase-buffer)
-	 (insert "<html><head>\n")
-	 (insert "<title>Glossary</title>")
-	 (insert "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n")
-	 (insert "</head>\n<body>\n")
-	 (insert "<table" (if (assoc 'table-options options)
-			      (cdr (assoc 'table-options options))
-			    "")
-		 ">\n")
-	 (insert "  <tr>\n")
-	 (dolist (language languages)
-	   (insert "    <th>" 
-		   (cond
-		    ((stringp language)
-		     language)
-		    ((symbolp language)
-		     (symbol-name language))
-		    (t (prin1-to-string language)))
-		   "</th>\n"))
-	 (insert "  </tr>\n")
-	 (dolist (row dict-as-list)
-	   (when (mulvoc-writer-worthy-row row languages n-required)
-	     (insert "  <tr>\n")
-	     (dolist (cell row)
-	       (if (null (cdr cell))
-		   (insert "    <td" cell-opts ">" empty "</td>\n")
-		 (let* ((language (car cell))
-			(language-name (cond
-					((stringp language) language)
-					((symbolp language) (symbol-name language))
-					(t (prin1-to-string language)))))
-		   (insert "    <td" cell-opts " lang=\""
-			   ;; (language-code-3-to-2 language-name)
-			language-name
-			   "\">"))
-		 (insert (cdr cell))
-		 (insert "</td>\n")))
-	     (insert "  </tr>\n")))
-	 (insert "</table>\n")
-	 (insert "<body>")
-	 (basic-save-buffer))))
+   'mulvoc-html-writer-0
    (if (assoc 'synonym-separator options)
        (cdr (assoc 'synonym-separator options))
      ",<br>")))
+
+(defun mulvoc-convert-dict-csv-to-html (csv-file html-file)
+  "Convert CSV-FILE dictionary to HTML-FILE."
+  (interactive "fCSV dictionary input file: 
+FHTML dictionary output file: ")
+  (let* ((options nil)
+	 (n-required 2)
+	 (dict-as-list (csv-parse-file csv-file))
+	 (languages (mapcar 'car (car dict-as-list))))
+    (mulvoc-html-writer-0 html-file 
+			  dict-as-list 
+			  'utf-8-unix 
+			  (append '("#TYPE" "#SENSE") languages))))
 
 (defun mulvoc-test-writer ()
   (interactive)
