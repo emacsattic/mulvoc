@@ -1,5 +1,14 @@
 ;;;; mulvoc-writer.el -- write mulvoc data structures out to file
-;;; Time-stamp: <2007-08-21 14:33:55 jcgs>
+;;; Time-stamp: <2007-08-23 15:04:45 jcgs>
+
+;; Copyright (C) 2007, John C. G. Sturdy
+
+;; Author: John C. G. Sturdy <john@cb1.com>
+;; Maintainer: John C. G. Sturdy <john@cb1.com>
+;; Created: 2006?
+;; Keywords: languages
+
+;; This file is NOT part of GNU Emacs.
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -215,16 +224,16 @@ Valid keys are table-options, empty-cell-text, synonym-separator, and cell-optio
 
 (defun mulvoc-convert-dict-csv-to-html (csv-file html-file)
   "Convert CSV-FILE dictionary to HTML-FILE."
-  (interactive "fCSV dictionary input file: 
+  (interactive "fCSV dictionary input file:
 FHTML dictionary output file: ")
   (let* ((options nil)
 	 (n-required 2)
 	 (dict-as-list (csv-parse-file csv-file))
 	 (languages (mapcar 'car (car dict-as-list))))
-    (mulvoc-html-writer-0 html-file 
-			  dict-as-list 
-			  'utf-8-unix 
-			  (append '("#TYPE" "#SENSE") languages))))
+    (mulvoc-html-writer-0 html-file
+			  dict-as-list
+			  'utf-8-unix
+			   languages)))
 
 (defun mulvoc-test-writer ()
   (interactive)
