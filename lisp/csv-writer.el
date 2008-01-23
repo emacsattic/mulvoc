@@ -1,6 +1,6 @@
 ;;;; csv-writer.el -- write alists into csv files
 
-;;; Time-stamp: <2006-05-01 13:34:42 jcgs>
+;;; Time-stamp: <2007-11-26 17:47:09 jcgs>
 
 ;; written by John C G Sturdy, 2004-11-20
 
@@ -69,16 +69,20 @@
 
 (defvar csv-cell-format-unknown "%S"
   "*Format to use for inserting things we don't specifically recognize.")
-  
+
+(defvar csv-cell-format-null ""
+  "*Format to use for inserting null cells.")
+
 (defun csv-insert-cell (cell)
-  "Insert a CSV data cell.
+  "Insert a CSV data CELL.
 To control the format for each kind of cell, set the format variables:
-  csv-always-quote-strings
-  csv-cell-format-string
-  csv-cell-format-quoted-string
-  csv-cell-format-integer
-  csv-cell-format-number
-  csv-cell-format-unknown
+  `csv-always-quote-strings'
+  `csv-cell-format-string'
+  `csv-cell-format-quoted-string'
+  `csv-cell-format-integer'
+  `csv-cell-format-number'
+  `csv-cell-format-null'
+  `csv-cell-format-unknown'
 See the documentation of each of these for what it does.
 
 For example, you could override these if you want to pad cells with
@@ -93,6 +97,8 @@ spaces -- good for those who like padded cells?"
 			csv-cell-format-quoted-string
 		      csv-cell-format-string)
 		    cell)))
+   ((null cell)
+    (insert csv-cell-format-null))
    ((integerp cell)
     (insert (format csv-cell-format-integer cell)))
    ((numberp cell)
