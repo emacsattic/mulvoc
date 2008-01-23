@@ -123,6 +123,10 @@ CODING-SYSTEM gives the coding-system for reading the buffer."
     ;;(csv-force-complete-lines keylist result)
     result))
 
+(defvar csv-modify-line-functions nil
+  "Functions to call to modify the result of `csv-read-line'.
+This lets you add file positions, etc.")
+
 (defun csv-read-line (&optional keylist)
   "Parse a single CSV line.
 If KEYLIST is not nil an alist is returned, using the keys from the keylist.
@@ -189,6 +193,8 @@ Otherwise just the list of entries is returned."
 	(setq line-contents (cons (cons key "") line-contents)))
       (setq index (+ 1 index)))
     ;; finally reverse result -- for readability
+    (dolist (filter csv-modify-line-functions)
+      (setq line-contents (funcall filter line-contents)))
     (reverse line-contents)))
 
 ;; (defun csv-force-complete-lines (keylist contentlist)
