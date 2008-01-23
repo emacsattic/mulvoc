@@ -1,5 +1,6 @@
-"#TYPE","#SENSE","sequencenumber","ENG","GLI","NRR","SWD","GER","DUT","PQL","RUS","FIN","BSQ","PRT","PRV","ITA","Romaji","Pinyin"
-"#INPUT-METHODS",,,"british","irish",,,"german",,"polish","russian","finnish","basque",,,,,
+"#TYPE","#SENSE","sequencenumber","ENG","GLI","NRR","SWD","GER","DUT","PQL","RUS","FIN","BSQ","PRT","PRV","ITA","Romaji","Pinyin","CMN"
+"#LANGUAGENAME","","sequencenumber","English","Irish","Norwegian","Swedish","German","Dutch","Polish","Russian","Finnish","Basque","Portuguese","Occitan","Italian","Romaji","Pinyin","Chinese"
+"#INPUT-METHODS",,,"british","irish",,,"german",,"polish","russian","finnish","basque","portuguese","occitan","italian","romaji","pinyin","chinese-tonepy"
 "noun","Month",4,"april","aibreán, mí aibreáin",,"April",,,,,,,,,,,
 "noun","Month",8,"august","lúnasa, mí lúnasa",,"Augusti",,,,,,,,,,,
 "noun","Season",3,"autumn","fómhar",,"Höst","herbst(m)",,,,,,,,,,
@@ -25,11 +26,11 @@
 "noun","Day",7,"saturday","satharn",,,,,,,,,,,,,
 "noun",,,"fortnight","coicíse",,,,,,,,,,,,,
 "noun","Month",3,"march","márta, mí na márta",,,,,,,,,,,,,
-"noun",,,"season","séasúr",,,"jahreszeit",,,,,,,,,,
-"noun","season",,"winter",,,,"winter",,,,,,,,,,
-"noun","season",,"spring",,,,"frühling",,,,,,,,,,
-"noun","season",,"summer",,,,,,,,,,,,,,
-"noun","season",,"autumn",,,,,,,,,,,,,,
+"noun",,,"season","séasúr",,,"jahreszeit",,,,,,,,,,"jì-jié","季节"
+"noun","season",,"winter",,,,"winter",,,,,,,,,,,"冬"
+"noun","season",,"spring",,,,"frühling",,,,,,,,,,"chun1","春"
+"noun","season",,"summer",,,,,,,,,,,,,,"","夏"
+"noun","season",,"autumn",,,,,,,,,,,,,,"","秋"
 "noun","time",,"morning",,,,,,,,,,,,,,
 "noun","time",,"afternoon",,,,,,,,,,,,,,
 "noun","time",,"evening",,,,,,,,,,,,,,
@@ -37,8 +38,8 @@
 "noun","time",,"day","lá",,,,,,,,,,,,,
 "noun","time",,"week",,,,,,,,,,,,,,
 "noun","time",,"fortnight",,,,,,,,,,,,,,
-"noun","time",,"month","mí",,,,,,,,,,,,,
-"noun","time",,"year","bliain",,,,,,,,,,,,,
+"noun","time",,"month","mí",,,,,,,,,,,,,"yuè","月"
+"noun","time",,"year","bliain",,,,,,,,,,,,,"nián","年"
 "noun","time",,"century",,,,,,,,,,,,,,
 "noun","time",,"millenium",,,,,,,,,,,,,,
 "noun","time",,"second",,,,,,,,,,,,,,
