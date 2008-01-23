@@ -1,5 +1,5 @@
 ;;;; language-codes.el -- map between language names and language codes
-;;; Time-stamp: <2007-06-13 21:50:43 jcgs>
+;;; Time-stamp: <2007-10-30 16:53:00 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -48,10 +48,31 @@ This data is from SIL International.")
 	     ,@forms)
 	 (bury-buffer)))))
 
+(defvar standard-forms
+  '(("norwegian" . "Norwegian, Bokmaal")
+    ("chinese" . "Chinese, Mandarin")
+    ("irish" . "Gaelic, Irish")
+    ("scottish gaelic" . "Gaelic, Scots")
+    ("gaelic" . "Gaelic, Scots")
+    ("croatian" . "Serbo-croatian")
+    ("biblical hebrew" . "Hebrew, Ancient")
+    ("modern hebrew" . "Hebrew")
+    ("catalan" . "Catalan-valencian-balear"))
+  "Standard or common forms of languages.")
+
+(defun standardize-language-name (language)
+  "Return the name of the standard or common form of LANGUAGE."
+  (let ((pair (assoc (downcase language) standard-forms)))
+    (if pair
+	(cdr pair)
+      language)))
+
 (defun language-code (language-name &optional country-code standard-only)
   "Return the language code for LANGUAGE-NAME.
 If LANGUAGE-NAME is not recognized, it is returned unchanged.
-With optional second argument, return the country code instead."
+With optional argument COUNTRY-CODE, return the country code instead.
+Optional argument STANDARD-ONLY means use only the standard form."
+  (setq language-name (standardize-language-name language-name))
   (if (and (let ((case-fold-search nil))
 	     (string-match "^[A-Z][A-Z][A-Z]$" language-name))
 	   (rassoc language-name language-codes))
@@ -69,7 +90,8 @@ With optional second argument, return the country code instead."
 					   language-name)))
 	   ;; (message "Searching for %S or %S" search-pattern-standard search-pattern-any)
 	   (if (or (re-search-forward search-pattern-standard (point-max) t)
-		   (re-search-forward search-pattern-any (point-max) t))
+		   (and (not standard-only)
+			(re-search-forward search-pattern-any (point-max) t)))
 	       (let ((code (cons (match-string-no-properties 1) (match-string-no-properties 2))))
 		 (setq language-codes
 		       (cons (cons language-name
