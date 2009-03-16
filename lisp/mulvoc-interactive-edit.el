@@ -1,5 +1,5 @@
 ;;;; mulvoc-interactive-edit.el -- interactive vocabulary editing for mulvoc
-;;; Time-stamp: <2007-07-07 21:10:56 jcgs>
+;;; Time-stamp: <2008-11-23 22:22:54 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -49,7 +49,8 @@ Optional second argument gives extra things that can be read as well as language
 
 (defvar mulvoc-input-methods-for-languages
   '(("JPN" . "japanese-hiragana")
-    ("CMN" . "chinese-tonepy"))
+    ("CMN" . "chinese-tonepy")
+    ("KHK" . "mongolian-cyrillic"))
   "Input methods for languages.")
 
 (defun mulvoc-input-method-for-language (language)
@@ -65,21 +66,21 @@ Optional second argument gives extra things that can be read as well as language
 The input method is set to one appropriate for LANGUAGE."
   (let* ((om nil)
 	 (im (mulvoc-input-method-for-language language))
-	 (minibuffer-setup-hook (lambda () 
+	 (minibuffer-setup-hook (lambda ()
 				  (setq om current-input-method)
 				  (set-input-method im)))
 	 (minibuffer-exit-hook (lambda ()
-				 (set-input-method om)))
-	 )
-    (let ((result (read-from-minibuffer prompt
-					 original-contents
-					 nil ; keymap
-					 nil ; read as lisp
-					 nil ; history
-					 nil ; default-value
-					 t ; inherit-input-method
-					 )))
-      result)))
+				 (set-input-method om))))
+    (save-window-excursion
+      (quail-show-keyboard-layout)	; todo: cache this display
+      (read-from-minibuffer prompt
+			    original-contents
+			    nil		     ; keymap
+			    nil		     ; read as lisp
+			    nil		     ; history
+			    nil		     ; default-value
+			    t		     ; inherit-input-method
+			    ))))
 
 ;;;###autoload
 (defun mulvoc-edit-translation (from-lang from-word to-lang to-word)
@@ -110,42 +111,37 @@ The input method is set to one appropriate for LANGUAGE."
   )
 
 ;;;###autoload
-(defun mulvoc-read-word-pairs (attribute-to from-language to-language)
-  "Read pairs of words, and attribute them to ATTRIBUTE-TO. The words are in FROM-LANGUAGE and TO-LANGUAGE.
-ATTRIBUTE-TO is used to when writing dictionaries."
+(defun mulvoc-read-word-pairs (from-language to-language)
+  "Read pairs of words in FROM-LANGUAGE and TO-LANGUAGE."
   (interactive
-   (let* ((attribute-to  (completing-read "Write words that came from dictionary: "
-					  mulvoc-words-from-files))
-	  (from-language (mulvoc-read-language "First language: "))
+   (let* ((from-language (mulvoc-read-language "First language: "))
 	  (to-language (mulvoc-read-language "Second language: ")))
-     (list attribute-to from-language to-language)))
+     (list from-language to-language)))
   (let ((prompt-a (format "Word in %s: " from-language))
 	(prompt-b (format "Word in %s: " to-language))
+	(sense nil)
 	(word-a  nil)
 	(word-b nil)
 	(type nil))
     (while (not (and (string= word-a "")
 		     (string= word-b "")))
       (setq word-a (read-word-in-language prompt-a nil from-language)
-	    word-b (read-word-in-language prompt-b nil to-language)
-	    type (completing-read "Type: " mulvoc-parts-of-speech))
-      ;; todo: read #TYPE and #SENSE
+	    type (completing-read "Type: " mulvoc-parts-of-speech)
+	    ;; todo: read sense
+	    word-b (read-word-in-language prompt-b
+					  ;; todo: find and use old content
+					  nil
+					  to-language))
       (let* ((mulvoc-debug t)
 	     (new-meaning (mulvoc-define-meaning
 			   (list
-			    (cons "#TYPE" type)
+			    (cons "#TYPE" type
+				  ;; todo: include sense
+				  )
 			    (cons from-language word-a)
 			    (cons to-language word-b))))
-	     (origins (cdr (assoc 'origins
-				  new-meaning)))
 	     )
 	(message "new-meaning is %S" new-meaning)
-	(dolist (origin origins)
-	  (when (string= attribute-to (car origin))
-	    (message "Want to re-write %S (from %S)" origin origins)
-	    (find-file (car origin))
-	    (goto-char (cdr origin))
-	    ))
 	))))
 
 (defun assoc-sublist-tails (key list)
