@@ -1,5 +1,5 @@
 ;;;; mulvoc-custom.el -- custom definitions for mulvoc
-;;; Time-stamp: <2007-06-27 20:42:45 jcgs>
+;;; Time-stamp: <2008-09-09 16:30:32 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -23,8 +23,8 @@
   :group 'mulvoc)
 
 (defcustom mulvoc-cursor-active nil
-  "When non-nil, translations of the word at point are displayed after each command.
-This happens in buffers in which mulvoc-setup-hook-function has been run."
+  "When non-nil, translations of the word at point are displayed after commands.
+This happens in buffers in which `mulvoc-setup-hook-function' has been run."
   :type 'boolean
   :group 'mulvoc)
 
