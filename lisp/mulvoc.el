@@ -1,5 +1,5 @@
 ;;;; mulvoc.el -- multi-lingual vocabulary
-;;; Time-stamp: <2007-08-21 13:56:43 jcgs>
+;;; Time-stamp: <2008-10-04 20:19:08 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -166,6 +166,7 @@ translations from that language/word combination."
       translated-word)))
 
 (defun mulvoc-setup-hook-function ()
+  "Arrange for mulvoc to examine the current word after each command."
   (add-hook 'post-command-hook 'mulvoc-command-hook-function nil t))
 
 (add-hook 'text-mode-hook 'mulvoc-setup-hook-function)
@@ -236,8 +237,9 @@ properties of that language, such as input method.")
 ;;;###autoload
 (defun mulvoc-ensure-loaded (&optional originals-only)
   "Ensure that mulvoc has loaded its dictionaries."
-  (unless mulvoc-loaded
-    (mulvoc-setup originals-only)))
+  (let ((mulvoc-load-while-idle nil))
+    (unless mulvoc-loaded
+      (mulvoc-setup originals-only))))
 
 (defvar mulvoc-file-word-array nil
   "Where to collect this file's definitions. Rebound in reading code.")
@@ -275,7 +277,7 @@ properties of that language, such as input method.")
 (make-variable-buffer-local 'mulvoc-file-columns)
 
 (defun mulvoc-read-csv-file (dict-file &optional fast)
-  "Read the vocabulary from comma separate values DICT-FILE.
+  "Read the vocabulary from comma separated values file DICT-FILE.
 With optional FAST, do not merge with existing vocabulary.
 Use FAST only when you know there will be no overlaps,
 e.g. on the first file."
@@ -321,6 +323,10 @@ e.g. on the first file."
 		  was-visited)
 	(kill-buffer nil)))))
 
+(defvar mulvoc-loading-backgrounded nil
+  "Whether mulvoc is loading data as a background activity, which
+is done using an idle timer.")
+
 (defvar mulvoc-in-setup nil
   "Whether we are currently in mulvoc-setup.
 Used to prevent recursion, in the case of mulvoc-setup (or
@@ -330,7 +336,8 @@ used in the csv files that are read during mulvoc-setup.")
 ;;;###autoload
 (defun mulvoc-setup (&optional force)
   "Set up the MUlti-Lingual VOcabulary system.
-With optional argument, ignore the cached vocabulary file and get the original data."
+With optional argument FORCE, ignore the cached vocabulary file, and
+get the original data."
   (interactive "P")
   (unless mulvoc-in-setup
     (let ((mulvoc-in-setup t)
@@ -341,11 +348,14 @@ With optional argument, ignore the cached vocabulary file and get the original d
 	       (file-exists-p mulvoc-cache-file))
 	  (if (and mulvoc-load-while-idle
 		   (fboundp 'load-lisp-while-idle))
-	      (load-lisp-while-idle mulvoc-cache-file)
+	      (progn
+		(load-lisp-while-idle mulvoc-cache-file)
+		(setq mulvoc-loading-backgrounded t))
 	    (load-file mulvoc-cache-file))
 	(message "Mulvoc loading dictionaries matching %s from %s"
 		 mulvoc-dictionaries-pattern
 		 (mapconcat 'identity mulvoc-dictionaries-directories ", "))
+	(mulvoc-clear-dictionary)
 	(dolist (dict-directory mulvoc-dictionaries-directories)
 	  (message "Setting coding system for files in %s to be utf-8-unix" dict-directory)
 	  (add-to-list 'file-coding-system-alist
