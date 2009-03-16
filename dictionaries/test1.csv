@@ -1,8 +1,11 @@
 "#TYPE","#SENSE","ENG","GLI","GER","DUT","RUS"
-"noun","person","man, bloke","fear","mann","man","мүжчина"
+"noun","person","man, bloke","fear","mann",,
+"noun","person","man, bloke",,,"man","мүжчина"
 "noun",,"fear","eagla","furcht","vrees",
 "verb",,"fear, dread",,"fürchten","vrezen",
-"noun","person","woman","bean","frau","vrouw",
+"noun","person","woman","bean",,,
+"noun","person","woman",,"frau",,
+"noun","person","woman",,,"vrouw",
 "noun","animal","bear","béar","bär","beer",
 "verb",,"bear","iompair","drücken","dragen",
 "noun","food","bean","pónaire","bohne","boon",
@@ -21,4 +24,4 @@
 "verb",,"toll","bain","läuten","luiden",
 "noun","building","house","teach","haus","huis",
 "verb",,"teach","múin","lehren","leren",
-"unknown",,"woman",,"weib"
+"noun","person","woman",,"weib",,
