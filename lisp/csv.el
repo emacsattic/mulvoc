@@ -102,7 +102,9 @@ CODING-SYSTEM gives the coding-system for reading the buffer."
   (let ((result nil)
 	(keylist nil)
 	(go-ahead t)
-	(coding-system-for-read coding-system))
+	(coding-system-for-read coding-system)
+	(line 1)
+	(line-format (format "%%d/%d" (count-lines (point-min) (point-max)))))
     (save-window-excursion
       (if buffer
 	  (switch-to-buffer buffer)
@@ -117,6 +119,8 @@ CODING-SYSTEM gives the coding-system for reading the buffer."
 	;; (message "Got %S" (car result))
 	(next-line 1)
 	(end-of-line)
+	(setq line (1+ line))
+	(message line-format line)
 	(if (eobp)
 	    (setq go-ahead nil))))
     (setq result (reverse result))
