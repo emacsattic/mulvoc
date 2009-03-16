@@ -1,7 +1,7 @@
 ;;;; mulvoc-writer.el -- write mulvoc data structures out to file
-;;; Time-stamp: <2007-08-23 15:04:45 jcgs>
+;;; Time-stamp: <2008-08-01 19:08:07 jcgs>
 
-;; Copyright (C) 2007, John C. G. Sturdy
+;; Copyright (C) 2007, 2008, John C. G. Sturdy
 
 ;; Author: John C. G. Sturdy <john@cb1.com>
 ;; Maintainer: John C. G. Sturdy <john@cb1.com>
@@ -24,6 +24,7 @@
 ;;  with this program; if not, write to the Free Software Foundation, Inc.,
 ;;  59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
+(require 'mulvoc-merge)
 (provide 'mulvoc-writer)
 
 ;;;###autoload
