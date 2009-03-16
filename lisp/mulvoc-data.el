@@ -1,5 +1,5 @@
 ;;;; mulvoc-data.el -- main data handling for mulvoc
-;;; Time-stamp: <2007-08-10 00:04:52 jcgs>
+;;; Time-stamp: <2008-10-04 19:04:56 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -36,7 +36,9 @@ Irish), could have the following value on its symbol:
  (IRL . (noun . (ENG . \"man\") (IRL \"fear\"))))
 
 Synonyms replace the string (at the lowest level above) with a list of
-strings.")
+strings."
+  ;; todo: update this documentation to cover senses
+  )
 
 (defvar mulvoc-phrase-ending-words (make-vector 1511 nil)
   "Obarray for mulvoc phrase lookup.
@@ -303,7 +305,7 @@ e.g. on the first file."
 
 (defun mulvoc-all-meanings ()
   "Return a list of all meanings."
-  (let ((meanings-hash (makehash 'equal))
+  (let ((meanings-hash (make-hash-table :test 'equal))
 	(meanings-list nil))
     (mapatoms
      (lambda (word-atom)
@@ -335,16 +337,19 @@ This is for use in the file produced by mulvoc-dump-all-meanings."
 		       nil))
 	       (cdr m)))))
 
-(defun mulvoc-compile-vocabulary-cache ()
+(defun mulvoc-compile-vocabulary-cache (file)
   "Compile a vocabulary cache file."
   (interactive "FFile to store vocabulary meanings in: ")
   (mulvoc-clear-dictionary)
-  (mulvoc-dump-all-meanings t))
+  (mulvoc-dump-all-meanings file t))
 
-(defun mulvoc-dump-all-meanings (file &optional rebuild)
-  "Put a list of all known meanings into FILE."
+(defun mulvoc-dump-all-meanings (file &optional rebuild data)
+  "Put a list of all known meanings into FILE.
+With optional REBUILD, force a re-load from the CSV files.
+With optional DATA, use that instead of the loaded data."
   (interactive "FFile to store vocabulary meanings in: ")
-  (mulvoc-ensure-loaded rebuild)
+  (unless data
+    (mulvoc-ensure-loaded rebuild))
   (find-file file)
   (set-buffer-file-coding-system 'utf-8)
   (erase-buffer)
@@ -352,7 +357,9 @@ This is for use in the file produced by mulvoc-dump-all-meanings."
 	  ";; mulvoc meanings dumped at " (current-time-string)
 	  " by " user-mail-address
 	  " on " (system-name) "\n")
-  (let* ((meanings (mulvoc-all-meanings))
+  (let* ((meanings (if data
+		       (mulvoc-convert-meanings data)
+		     (mulvoc-all-meanings)))
 	 (n-meanings (length meanings))
 	 (per-percent (/ n-meanings 100))
 	 (standard-output (current-buffer))
@@ -371,7 +378,8 @@ This is for use in the file produced by mulvoc-dump-all-meanings."
 	(setq i-percent (/ i 100))
 	(princ (format "(message \"loading vocab ... %d%%%%\")\n" i-percent))))
     (message "%d meanings saved to file %s" n-meanings file))
-  (insert ";; end of meanings dump\n")
+  (insert "\n(setq mulvoc-loading-backgrounded nil)\n"
+	  ";; end of meanings dump\n")
   (basic-save-buffer))
 
 (provide 'mulvoc-data)
