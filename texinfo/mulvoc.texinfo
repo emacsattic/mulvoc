@@ -19,7 +19,7 @@
 @c The following two commands start the copyright page.
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 2006 John C. G. Sturdy
+Copyright @copyright{} 2006, 2008, 2009 John C. G. Sturdy
 
 Published by John C. G. Sturdy.
 
@@ -88,6 +88,12 @@ translation of A as B, and file 2 gives the translation of C as D, and
 file 3 gives the translation of B as C, mulvoc will recognise that D is
 a translation of A.
 
+The information from the spreadsheet(s) can be cached into a Lisp format
+for faster reading in future sessions.
+
+There are some facilities for adding vocabulary, and for scrounging data
+in bulk from Wiktionary.
+
 @node  Using Mulvoc, Vocabulary files, Introduction, Top
 @comment  node-name,  next,  previous,  up
 @chapter Using Mulvoc
@@ -143,8 +149,12 @@ There may also be a column labelled @code{#SENSE} which indicates the
 sense of the word, as some words have more than one meaning in the
 same language. 
 
-If you use the @code{#SENSE} column, you should use it consistently,
-as it is used in matching up parts of the same meaning.
+If you use the @code{#SENSE} column, you should use it consistently, as
+it is used in matching up parts of the same meaning.  If there is any
+language in which a word has more than one meaning, you should use the
+@code{#SENSE} column to distinguish them.  Otherwise, the chaining of
+equivalance from one data source to another may result in inaccurate
+translations.
 
 There can also be a row labelled (in the @code{#TYPE} column) as
 @code{#LANGUAGENAME}, to specify the human readable language name. 
@@ -170,7 +180,7 @@ SIL.
 The basic cell format is the word by itself.  equivalent words can be
 put in the same cell, separated by commas.
 
-@node  Special columns,  , Cell format, Vocabulary files
+@node  Special columns, Cache files, Cell format, Vocabulary files
 @comment  node-name,  next,  previous,  up
 @section Special columns
 
