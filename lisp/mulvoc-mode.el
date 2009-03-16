@@ -1,5 +1,5 @@
 ;;;; mulvoc-mode.el -- mulvoc presented through a minor mode -- its original use
-;;; Time-stamp: <2006-11-26 13:24:31 jcgs>
+;;; Time-stamp: <2009-01-19 15:06:02 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -21,10 +21,14 @@
   "Whether mulvoc mode is active.")
 
 ;;;###autoload
-(defun mulvoc-mode (arg)
-  "Minor mode to show translated words."
-  (interactive "p")
-  (if (> arg 0)
+(defun mulvoc-mode (&optional arg)
+  "Minor mode to show translated words.
+With no ARG, toggle the mode.
+With ARG, switch the mode on if ARG is greater than zero."
+  (interactive "P")
+  (if (if arg
+	  (> (prefix-numeric-value arg) 0)
+	(not mulvoc-mode))
       (progn
 	(setq mulvoc-mode t)
 	(mulvoc-ensure-loaded)
@@ -58,11 +62,12 @@ The languages listed in mulvoc-displayed-languages are shown."
 	  (let ((value (symbol-value word))
 		(word-string (symbol-name word)))
 	    (when (or (eq mulvoc-show-translations-from-language t)
-		      (member word-string (mapcar #'(lambda (w)
-						      (cdr
-						       (assoc mulvoc-show-translations-from-language
-							      (cdr w))))
-						  (cdr (assoc mulvoc-show-translations-from-language value)))))
+		      (member word-string
+			      (mapcar #'(lambda (w)
+					  (cdr
+					   (assoc mulvoc-show-translations-from-language
+						  (cdr w))))
+				      (cdr (assoc mulvoc-show-translations-from-language value)))))
 	      (let ( ;; todo: avoid calculating this each time around
 		    (languages (if mulvoc-displayed-languages
 				   (mapcar (function
@@ -123,7 +128,8 @@ whenever point moves to another word."
 	(let ((ob (intern-soft mulvoc-latest-word mulvoc-words)))
 	  (when ob
 	    (let ((display-string (mulvoc-word-display-string ob)))
-	      (when (stringp display-string) (mulvoc-display "%s" display-string)))))))))
+	      (when (stringp display-string)
+		(mulvoc-display "%s" display-string)))))))))
 
 (defun mulvoc-preceding-words-match (place words)
   "Check whether the preceding words before PLACE are WORDS.
@@ -139,8 +145,27 @@ most immediately preceding one."
 	      (mulvoc-preceding-words-match start (cdr words)))))
     place))
 
+(defvar mulvoc-lines-shown nil
+  "How many lines are shown.")
+
+(defun mulvoc-scrolling-display (translation)
+  "Display TRANSLATION in a scrolling window."
+  (when (and (numberp mulvoc-lines-shown)
+	     (> mulvoc-lines-shown 0))
+    (message "in mulvoc-scrolling-display %S" translation)
+    (let ((mulvoc-buffer (get-buffer-create "*Translations*")))
+      (unless (get-buffer-window mulvoc-buffer)
+	(let ((lower-window (split-window nil mulvoc-lines-shown)))
+	  (switch-to-buffer mulvoc-buffer)
+	  (select-window lower-window)))
+      (set-buffer mulvoc-buffer)
+      (goto-char (point-max))
+      (insert translation "\n")
+      (message "inserted %s in buffer %s; window is %s" translation (current-buffer) (selected-window))
+      (recenter (- -1 scroll-margin)))))
+
 (defvar mulvoc-expanded-words nil
-  "Words which have been handled by mulvoc-abbrev-expander.")
+  "Words which have been handled by `mulvoc-abbrev-expander'.")
 
 (defun mulvoc-abbrev-expander ()
   "Show translations for the word just expanded."
@@ -156,17 +181,23 @@ most immediately preceding one."
 		  (setq mulvoc-expanded-words
 			(cons ob mulvoc-expanded-words))
 		  (mulvoc-add-overlay start end translation)
+		  (mulvoc-scrolling-display translation)
 		  (when mulvoc-decorated-buffer
 		    (mulvoc-decorate-word start end translation))
 		  (mulvoc-display "%s" translation)))
 	    (let ((mwob (intern-soft word mulvoc-phrase-ending-words)))
 	      (when mwob
 		(let* ((phrase-value (symbol-value mwob))
-		       (match (mulvoc-preceding-words-match start (cdr phrase-value))))
+		       (match (mulvoc-preceding-words-match
+			       start
+			       (cdr phrase-value))))
 		  (when match
-		    (let ((translation (mulvoc-word-display-string (intern (car phrase-value) mulvoc-words))))
+		    (let ((translation (mulvoc-word-display-string
+					(intern (car phrase-value)
+						mulvoc-words))))
 		      (when (stringp translation)
 			(mulvoc-add-overlay match end translation)
+			(mulvoc-scrolling-display translation)
 			(when mulvoc-decorated-buffer
 			  (mulvoc-decorate-word match end translation))
 			(mulvoc-display "%s" translation)))))))))))))
@@ -174,11 +205,41 @@ most immediately preceding one."
 (defvar mulvoc-abbrev-setup-done nil
   "Whether mulvoc has yet set up its abbreviation system.")
 
+(defun add-abbrev-function (abbrev-table word fn)
+  "In ABBREV-TABLE, declare that WORD will run FN when expanded.
+This avoids overwriting any existing expander functions."
+  (let* ((existing-abbrev (abbrev-symbol word global-abbrev-table))
+	 (existing-function (and existing-abbrev
+				 (symbol-function existing-abbrev))))
+    (if existing-function
+	(let* ((existing-plist (symbol-plist existing-abbrev))
+	       (runner `(lambda () (mapc 'funcall (get ',existing-abbrev
+						       'expander-functions)))))
+	  ;; We need a proper property-list, so if we just have an
+	  ;; expansion count in that slot, convert it to a real
+	  ;; property list
+	  (when (integerp existing-plist)
+	    (setq existing-plist (list 'count existing-plist))
+	    (setplist existing-abbrev existing-plist))
+	  (let ((functions (get existing-abbrev 'expander-functions)))
+	    (unless (equal existing-function runner)
+	      (push existing-function functions)
+	      (fset existing-abbrev runner))
+	    (unless (member fn functions)
+	      (push fn functions))
+	    (put existing-abbrev 'expander-functions functions)))
+      (define-abbrev abbrev-table word word fn 0 t))))
+
 ;;;###autoload
-(defun mulvoc-abbrev-setup ()
-  "Set up mulvoc's abbreviation system"
+(defun mulvoc-abbrev-setup (&optional force)
+  "Set up mulvoc's abbreviation system.
+This is effective globally.
+This is normally only done once; supply optional FORCE to make
+it happen even if it has already happened.
+Unfortunately, it currently replaces abbrev functions.
+Each buffer using it must turn on abbrev-mode."
   (interactive)
-  (message "In mulvoc-abbrev-setup in %S" (current-buffer))
+  (message "In mulvoc-abbrev-setup")
   (mulvoc-ensure-loaded)
   (unless 
     mulvoc-abbrev-setup-done		; this was making it not work
@@ -187,14 +248,13 @@ most immediately preceding one."
 	      (message "Defining %S ..." word-obarray)
 	      (mapatoms (lambda (word-atom)
 			  (let ((word-string (symbol-name word-atom)))
-			    ;; todo: try to make this respect the existing abbrev function, you can get this using (symbol-function (intern-soft word-string global-abbrev-table))
-			    ;; (message "  Defining abbrev %s" word-string)
-			    (define-abbrev global-abbrev-table word-string word-string 'mulvoc-abbrev-expander)))
+			    (add-abbrev-function global-abbrev-table word-string 'mulvoc-abbrev-expander)))
 			word-obarray))
 	    (list mulvoc-words mulvoc-phrase-ending-words))
     (setq mulvoc-abbrev-setup-done t))
   (message "Done mulvoc-abbrev-setup")
-  (setq abbrev-mode t))
+  ;; (setq abbrev-mode t)
+  )
 
 ;;;; decorate words in region
 
@@ -208,13 +268,17 @@ most immediately preceding one."
 (make-variable-buffer-local 'mulvoc-decorated-buffer)
 
 (defun mulvoc-decorate-word-1 (begin end translation)
-  "Decorate the word between BEGIN and END with TRANSLATION."
+  "Decorate the word between BEGIN and END with TRANSLATION.
+This is meant as an internal funtion for `mulvoc-decorate-word'
+and `mulvoc-decorate-words-region', which handle modification
+state, etc."
   (put-text-property begin end 'help-echo translation)
   (put-text-property begin end 'point-entered 'mulvoc-show-decoration))
 
 (defun mulvoc-decorate-word (begin end translation)
   "Decorate the word between BEGIN and END with TRANSLATION."
-  (let ((modified (buffer-modified-p)))
+  (let ((inhibit-read-only t)
+	(modified (buffer-modified-p)))
     (mulvoc-decorate-word-1 begin end translation)
     ;; (mulvoc-add-overlay begin end translation) ; don't want to do this twice!
     (set-buffer-modified-p modified)))
@@ -223,7 +287,8 @@ most immediately preceding one."
   "Mark words between BEGIN and END with properties that display translations.
 Translations are displayed when point moves into the word, or the mouse goes over it."
   (interactive "r")
-  (let ((modified (buffer-modified-p)))
+  (let ((inhibit-read-only t)
+	(modified (buffer-modified-p)))
     (save-excursion
       (goto-char begin)
       (while (re-search-forward "\\b\\w+\\b" end t)
@@ -275,7 +340,7 @@ Translations are displayed when point moves into the word, or the mouse goes ove
 		 recyled-element)
 	     (make-overlay begin end))))
       ;; (put-text-property 0 (length translation) 'face (cons 'italic t) translation)
-      (put-text-property 0 (length translation) 'display '(height .6) translation)
+      (put-text-property 0 (length translation) 'display '(height .9) translation)
       (overlay-put new-overlay 'evaporate t)
       (overlay-put new-overlay 'after-string (format " {%s}" translation))
       (overlay-put new-overlay 'modification-hooks '(mulvoc-overlay-modification-function))
