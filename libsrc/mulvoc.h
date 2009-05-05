@@ -1,5 +1,5 @@
 /* mulvoc.c
-   Time-stamp: <2009-03-15 19:16:22 jcgs>
+   Time-stamp: <2009-05-04 16:03:03 jcgs>
    C definitions for MuLVoc data (multi-lingual vocabulary)
 
    Copyright J. C. G. Sturdy 2009
@@ -20,6 +20,12 @@
 
  */
 
+typedef struct language_property {
+  struct language_property *next;
+  int key;
+  char *value;
+} language_property;
+
 #define MAX_CODE 8
 #define MAX_NAME 24
 
@@ -27,6 +33,7 @@ typedef struct vocabulary_language {
   char code[MAX_CODE];
   char name[MAX_NAME];
   int language_number;
+  language_property *properties;
 } vocabulary_language;
 
 /* 
@@ -52,6 +59,9 @@ typedef struct vocabulary_meaning {
   int part_of_speech;
   int sense_index;
   int form_index;
+#ifdef debug
+  int meaning_id;
+#endif
 } vocabulary_meaning;
 
 /* 
@@ -114,11 +124,22 @@ typedef struct hash_chain_unit {
   language_chain_unit *languages;
 } hash_chain_unit;
 
+/* 
+   This is used for sorting a table ready for output sorted by a
+   particular key language.
+ */
+
+typedef struct sorted_vocab_word {
+  char *as_text;
+  vocabulary_meaning *meaning;
+} sorted_vocab_word;
+
 /* bit flags for table.tracing */
 #define TRACE_READ 1
 #define TRACE_HEADERS 2
-#define TRACE_PRAGMATA 3
-#define TRACE_COMMENTS 4
+#define TRACE_PRAGMATA 4
+#define TRACE_COMMENTS 8
+#define TRACE_MERGE 16
 
 /*
   The `table' is our top-level structure.
@@ -153,11 +174,21 @@ typedef struct vocabulary_table {
   int forms_table_size;		/* allocated size */
   char **forms;
 
+  int n_properties;
+  int property_table_size;
+  char **properties;
+
   int hash_max;
   hash_chain_unit **hash_table;
 
   int n_meanings;
   vocabulary_meaning *meanings;
+#ifdef debug
+  int next_meaning_id;
+#endif
+
+  int n_keyed;
+  sorted_vocab_word *keyed;
 
   int tracing;
   unsigned int bytes_read;
@@ -173,14 +204,31 @@ extern void mulvoc_initialize_table(vocabulary_table *table,
 extern int read_vocab_file(const char *filename,
 			   vocabulary_table *table);
 
-extern vocabulary_word *
-find_language_word_in_meaning(vocabulary_meaning *meaning, int lang_index);
+extern vocabulary_word *find_language_word_in_meaning(vocabulary_meaning *meaning,
+						      int lang_index);
+
+extern int count_language_words(vocabulary_table *table,
+				int language_index,
+				int all_synonyms);
+
+extern int language_indices(vocabulary_table *table,
+			    char *languages_string,
+			    int **languages);
+
+extern int vocabulary_keyed_by_language(vocabulary_table *table,
+					int key_language_index,
+					int all_synonyms,
+					int sorted);
+
 
 extern char *get_word_translations_string(vocabulary_table *table,
 					  char *as_text,
 					  char *result_section_format,
 					  char *result_space,
 					  int result_size);
+
+extern void show_meaning(FILE *stream, vocabulary_table *table, vocabulary_meaning *meaning, char *label);
+extern void show_meanings(FILE *stream, vocabulary_table *table, char *start_label, char *end_label, char *row_label);
 
 extern void show_table_metadata(FILE *stream,
 				vocabulary_table *table);
@@ -189,12 +237,43 @@ extern void show_table_data(FILE *stream,
 			    vocabulary_table *table,
 			    char *unspecified);
 
+extern int part_of_speech_index(vocabulary_table *table, char *as_text);
+extern int sense_index(vocabulary_table *table, char *as_text);
+extern int form_index(vocabulary_table *table, char *as_text);
+extern int property_index(vocabulary_table *table, char *as_text);
+
+extern char *language_property_string(vocabulary_table *table,
+				      int language_index,
+				      int property_index);
+
+extern hash_chain_unit *get_word_data(vocabulary_table *table,
+				      char *as_text);
+
+extern language_chain_unit *get_word_language_data(vocabulary_table *table,
+						   hash_chain_unit *word_data,
+						   int language);
+extern part_of_speech_chain_unit *get_word_language_type_data(vocabulary_table *table,
+							      language_chain_unit* word_language_data,
+							      int type_index);
+extern sense_chain_unit *get_word_language_type_sense_data(vocabulary_table *table,
+							   part_of_speech_chain_unit* word_language_type_data,
+							   int sense_index);
+extern form_chain_unit* get_word_language_type_sense_form_data(vocabulary_table *table,
+							       sense_chain_unit* word_language_type_sense_data,
+							       int form_index);
+
 extern void mulvoc_output_html(FILE *output_stream,
 			       vocabulary_table *table,
+			       int *languages,
+			       int n_languages,
+			       int key_idx,
 			       char *table_opts,
 			       char *blank);
 
 extern void mulvoc_output_csv(FILE *output_stream,
-			      vocabulary_table *table);
+			      vocabulary_table *table,
+			      int *languages,
+			      int n_languages,
+			      int key_idx);
 
 /* mulvoc.h ends here */
