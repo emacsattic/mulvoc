@@ -1,5 +1,5 @@
 /* voctest.c
-   Time-stamp: <2009-03-14 21:09:24 jcgs>
+   Time-stamp: <2009-05-01 21:05:01 jcgs>
  */
 
 #include <stdio.h>
@@ -13,15 +13,24 @@
 
 #define BUFFER_SIZE (256*256)
 
-static const char *short_options = "dmt:v";
+static const char *short_options = "dmt:vh";
 
 static struct option long_options[] = {
   {"data", no_argument, 0, 'd'},
+  {"help", no_argument, 0, 'h'},
   {"meta", no_argument, 0, 'm'},
   {"translate", optional_argument, 0, 't'},
   {"verbose", no_argument, 0, 'v'},
   {0, 0, 0, 0}
 };
+
+void
+show_usage(char *program)
+{
+  fprintf(stderr,
+	  "Usage: %s [--verbose] [--meta] [--data] [--translate word] file ... file\n",
+	  program);
+}
 
 int
 main(int argc, char **argv)
@@ -39,7 +48,7 @@ main(int argc, char **argv)
   clock_t end_time;
 
   if (argc < 2) {
-    fprintf(stderr, "Usage: %s [options] file ... file\n", argv[0]);
+    show_usage(argv[0]);
     exit(0);
   }
 
@@ -54,12 +63,16 @@ main(int argc, char **argv)
     }
     switch (opt) {
     case 'd': print_data = 1; break;
+    case 'h': show_usage(argv[0]); exit(0); break;
     case 'm': print_metadata = 1; break;
     case 't': translate = 1; word_in = optarg; break;
     case 'v': verbose = 1; break;
+    default: show_usage(argv[0]); exit(1); break;
     }
   }
 
+  /* note: the table stores its tracing state, so the `verbose'
+     setting we give here will affect later library calls too. */
   mulvoc_initialize_table(&table, 1511, START_SIZE, verbose ? -1 : 0);
 
   for (; optind < argc; optind++) {
