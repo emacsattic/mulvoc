@@ -1,5 +1,5 @@
 /* mulvoc_data.c
-   Time-stamp: <2009-03-15 19:16:22 jcgs>
+   Time-stamp: <2009-05-04 17:11:35 jcgs>
    Output MuLVoc data (multi-lingual vocabulary) as CSV or HTML
 
    Copyright J. C. G. Sturdy 2009
@@ -27,32 +27,38 @@
 void
 mulvoc_output_html(FILE *output_stream,
 		   vocabulary_table *table,
+		   int *languages,
+		   int n_languages,
+		   int key_idx,
 		   char *table_opts,
 		   char *blank)
 {
-  int n_langs = table->n_languages;
-  vocabulary_language **t_langs = table->languages;
   int i_lang;
+  int rows = vocabulary_keyed_by_language(table, key_idx, 0, 1);
+  int i_row;
 
-  vocabulary_meaning *meaning;
+  if (languages == NULL) {
+    n_languages = language_indices(table, NULL, &languages);
+  }
+
+  /* todo: output the rest of the header row(s) */
 
   fprintf(output_stream, "<table%s%s>\n",
 	  table_opts != NULL ? " " : "",
 	  table_opts != NULL ? table_opts : "");
   fprintf(output_stream, "  <tr><td>#TYPE</td><td>#FORM</td><td>#SENSE</td>");
 
-  for (i_lang = 0; i_lang < n_langs; i_lang++) {
-    fprintf(output_stream, "<td>%s</td>", t_langs[i_lang]->code);
+  for (i_lang = 0; i_lang < n_languages; i_lang++) {
+    fprintf(output_stream, "<td>%s</td>", table->languages[languages[i_lang]]->code);
   }
   fprintf(output_stream, "</tr>\n  <tr><td></td><td></td><td></td>");
-  for (i_lang = 0; i_lang < n_langs; i_lang++) {
-    fprintf(output_stream, "<td>%s</td>", t_langs[i_lang]->name);
+  for (i_lang = 0; i_lang < n_languages; i_lang++) {
+    fprintf(output_stream, "<td>%s</td>", table->languages[languages[i_lang]]->name);
   }
   fprintf(output_stream, "  </tr>\n");
-  
-  for (meaning = table->meanings;
-       meaning != NULL;
-       meaning = meaning->next) {
+
+  for (i_row = 0; i_row < rows; i_row++) {
+    vocabulary_meaning *meaning = table->keyed[i_row].meaning;
     int pos_index = meaning->part_of_speech;
     int sense_index = meaning->sense_index;
     int form_index = meaning->form_index;
@@ -62,14 +68,14 @@ mulvoc_output_html(FILE *output_stream,
 	    sense_index >= 0 ? table->senses[sense_index] : "",
 	    form_index >= 0 ? " class=\"form\"" : "",
 	    form_index >= 0 ? table->forms[form_index] : "");
-    for (i_lang = 0; i_lang < n_langs; i_lang++) {
-      vocabulary_word *word = find_language_word_in_meaning(meaning, i_lang);
+    for (i_lang = 0; i_lang < n_languages; i_lang++) {
+      vocabulary_word *word = find_language_word_in_meaning(meaning, languages[i_lang]);
       if (word != NULL) {
 	fprintf(output_stream, "    <td lang=\"%s\">%s</td>\n",
 		table->languages[word->language]->code,
 		word->text);
       } else {
-	if (blank) {
+	if (blank != NULL) {
 	  fprintf(output_stream, "    <td>%s</td>\n", blank);
 	} else {
 	  fprintf(output_stream, "    <td></td>\n");
@@ -83,9 +89,101 @@ mulvoc_output_html(FILE *output_stream,
 }
 
 void
-mulvoc_output_csv(FILE *output_stream,
-		  vocabulary_table *table)
+mulvoc_output_meaning(FILE *output_stream,
+		      vocabulary_table *table,
+		      int *languages,
+		      int n_languages,
+		      vocabulary_meaning *meaning)
 {
+  int i;
+
+  fprintf(output_stream, "\"%s\",\"%s\",\"%s\"",
+	  table->parts_of_speech[meaning->part_of_speech],
+	  table->senses[meaning->sense_index],
+	  table->forms[meaning->form_index]);
+
+  for (i = 0; i < n_languages; i++) {
+    int l = languages[i];
+    int got_some = 0;
+    vocabulary_word *w;
+
+    for (w = meaning->words;
+	 w != NULL;
+	 w = w->next) {
+      if (w->language == l) {
+	if (got_some) {
+	  fputs(", ", output_stream);
+	} else {
+	  fputs(",\"", output_stream);
+	  got_some = 1;
+	}
+	fputs(w->text, output_stream);
+      }
+    }
+    if (got_some) {
+      putc('\"', output_stream);
+    } else {
+      putc(',', output_stream);
+    }
+  }
+  putc('\n', output_stream);
+}
+
+void
+mulvoc_output_csv(FILE *output_stream,
+		  vocabulary_table *table,
+		  int *languages,
+		  int n_languages,
+		  int key_idx)
+{
+  int rows = vocabulary_keyed_by_language(table, key_idx, 0, 1);
+  int i_row, i_lang;
+
+  fprintf(output_stream, "\"#TYPE\",\"#FORM\",\"#SENSE\"");
+
+  for (i_lang = 0; i_lang < n_languages; i_lang++) {
+    fprintf(output_stream, ",\"%s\"", table->languages[languages[i_lang]]->code);
+  }
+  fprintf(output_stream, "\n\"#languagename\",,");
+  for (i_lang = 0; i_lang < n_languages; i_lang++) {
+    fprintf(output_stream, ",\"%s\"", table->languages[languages[i_lang]]->name);
+  }
+  putc('\n', output_stream);
+
+  for (i_row = 0;
+       i_row < table->n_properties;
+       i_row++) {
+    fprintf(output_stream, "\"#%s\",,", table->properties[i_row]);
+    for (i_lang = 0; i_lang < n_languages; i_lang++) {
+      char *prop_text = language_property_string(table, languages[i_lang], i_row);
+      if (prop_text == NULL) {
+	putc(',', output_stream);
+      } else {
+	fprintf(output_stream, ",\"%s\"", prop_text);
+      }
+    }
+    putc('\n', output_stream);
+  }
+
+  for (i_row = 0; i_row < rows; i_row++) {
+    vocabulary_meaning *meaning = table->keyed[i_row].meaning;
+    int pos_index = meaning->part_of_speech;
+    int sense_index = meaning->sense_index;
+    int form_index = meaning->form_index;
+    fprintf(output_stream, "\"%s\",\"%s\",\"%s\"",
+	    pos_index >= 0 ? table->parts_of_speech[pos_index] : "",
+	    form_index >= 0 ? table->forms[form_index] : "",
+	    sense_index >= 0 ? table->senses[sense_index] : "");
+    for (i_lang = 0; i_lang < n_languages; i_lang++) {
+      vocabulary_word *word = find_language_word_in_meaning(meaning, languages[i_lang]);
+      if (word != NULL) {
+	fprintf(output_stream, ",\"%s\"", word->text);
+      } else {
+	putc(',', output_stream);
+      }
+    }
+    putc('\n', output_stream);
+  }
 }
 
 /* mulvoc_out.c ends here */
