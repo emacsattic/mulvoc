@@ -1,5 +1,5 @@
 /* mulvoc_data.c
-   Time-stamp: <2009-03-15 18:51:21 jcgs>
+   Time-stamp: <2009-05-05 11:22:09 jcgs>
    Read and manage MuLVoc data (multi-lingual vocabulary)
 
    Copyright J. C. G. Sturdy 2009
@@ -28,17 +28,27 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#define _GNU_SOURCE
 #include <string.h>
 
-#include "mulvoc.h"
+/* If you want the debugging enabled, you should turn it on in the
+   header, too (i.e. before the include of the header), as it uses
+   extra structure fields. */
+/* #define debug 1 */
 
-/* #define debug_merges 1 */
+#include "mulvoc.h"
 
 void *
 mulvoc_malloc(vocabulary_table *table, unsigned int size)
 {
   table->bytes_allocated += size;
   return malloc(size);
+}
+
+void
+mulvoc_free(vocabulary_table *table, void *mem)
+{
+  free(mem);
 }
 
 void
@@ -74,6 +84,11 @@ mulvoc_initialize_table(vocabulary_table *table,
 					 * sizeof(char*));
   table->n_forms = 0;
 
+  table->n_properties = 0;
+  table->property_table_size = misc_table_size;
+  table->properties = (char**)mulvoc_malloc(table, table->property_table_size
+					    * sizeof(char*));
+
   table->hash_max = hash_size;
   table->hash_table = hash = (hash_chain_unit**)mulvoc_malloc(table, table->hash_max * sizeof(hash_chain_unit*));
 
@@ -83,6 +98,12 @@ mulvoc_initialize_table(vocabulary_table *table,
 
   table->n_meanings = 0;
   table->meanings = NULL;
+#ifdef debug
+  table->next_meaning_id = 0;
+#endif
+
+  table->n_keyed = 0;
+  table->keyed = NULL;
 }
 
 int
@@ -98,8 +119,9 @@ language_index(vocabulary_table *table,
   }
 
   for (i = 0; i < n; i++) {
+    vocabulary_language *lang = table->languages[i];
     if (strncmp(language_code,
-		(char*)(&(table->languages[i])),
+		table->languages[i]->code,
 		code_length) == 0) {
       return i;
     }
@@ -109,15 +131,15 @@ language_index(vocabulary_table *table,
     struct vocabulary_language *new_language = (vocabulary_language*)mulvoc_malloc(table, sizeof(vocabulary_language));
     char *code = (char*)(&(new_language->code[0]));
     char *name = (char*)(&(new_language->name[0]));
-     strncpy(code, language_code, code_length);
-     code[code_length] = (char)'\0';
-     name[0] = (char)'\0';
+    strncpy(code, language_code, code_length);
+    code[code_length] = (char)'\0';
+    name[0] = (char)'\0';
 
     if (table->n_languages == table->languages_table_size) {
       int new_table_size = table->languages_table_size * 2;
       vocabulary_language **new_table =
 	(vocabulary_language**)mulvoc_malloc(table, new_table_size
-				      * sizeof(vocabulary_language*));
+					     * sizeof(vocabulary_language*));
       // fprintf(stderr, "enlarging language table from %d\n", table->languages_table_size);
       for (i = 0; i < n; i++) {
 	// fprintf(stderr, " copying %d\n", i);
@@ -127,14 +149,15 @@ language_index(vocabulary_table *table,
 	// fprintf(stderr, " nulling %d\n", i);
 	new_table[i] = NULL;
       }
-      free(table->languages);
+      mulvoc_free(table, table->languages);
       table->languages = new_table;
       table->languages_table_size = new_table_size;
     }
 
     // fprintf(stderr, "setting %d to new language\n", n);
-    table->languages[n] = new_language;
+    new_language->properties = NULL;
     new_language->language_number = n;
+    table->languages[n] = new_language;
     table->n_languages = n + 1;
     return n;
   }
@@ -167,7 +190,11 @@ show_languages(FILE *stream,
 
   for (i = 0; i < n; i++) {
     vocabulary_language *lang = table->languages[i];
+    language_property *props = lang->properties;
     fprintf(stream, "% 3d: %s (%s)\n", lang->language_number, &(lang->code[0]), &(lang->name[0]));
+    for (; props != NULL; props = props->next) {
+      fprintf(stream, "    %s = %s\n", table->properties[props->key], props->value);
+    }
   }
 }
 
@@ -229,6 +256,41 @@ show_table_metadata(FILE *stream,
 }
 
 void
+show_meaning(FILE *stream, vocabulary_table *table, vocabulary_meaning *meaning, char *label)
+{
+  vocabulary_word *word;
+  fprintf(stream, label);
+  if (meaning == NULL) {
+    fprintf(stream, "<empty meaning>");
+  } else {
+#ifdef debug
+    fprintf(stream, "[%05d] ", meaning->meaning_id);
+#endif
+    for (word = meaning->words;
+	 word != NULL;
+	 word=word->next) {
+      fprintf(stream, "%s: %s; ", table->languages[word->language]->code, word->text);
+    }
+  }
+  fprintf(stream, "\n");
+}
+
+void
+show_meanings(FILE *stream, vocabulary_table *table, char *start_label, char *end_label, char *row_label)
+{
+  vocabulary_meaning *meaning;
+  int n = 0;
+  fprintf(stream, start_label);
+  for (meaning = table->meanings;
+       meaning != NULL;
+       meaning=meaning->next) {
+    show_meaning(stream, table, meaning, row_label);
+    n++;
+  }
+  fprintf(stream, end_label, n);
+}
+
+void
 show_table_data(FILE *stream,
 		vocabulary_table *table,
 		char *unspecified)
@@ -268,19 +330,14 @@ show_table_data(FILE *stream,
 		   form = form->next) {
 		int f_index = form->form_index;
 		vocabulary_meaning *meaning = form->meaning;
-		vocabulary_word *word; 
+		vocabulary_word *word;
 		fprintf(stream, "% 20.20s: % 10.10s: % 10.10s: % 10.10s: % 10.10s: ",
 			chain_link->text,
 			table->languages[language->language]->code,
 			p_o_s_descr,
 			sense_descr,
 			f_index >= 0 ? table->forms[f_index] : unspecified);
-		for (word = meaning->words;
-		     word != NULL;
-		     word=word->next) {
-		  fprintf(stream, "%s: %s; ", table->languages[word->language]->code, word->text);
-		}
-		fprintf(stream, "\n");
+		show_meaning(stream, table, meaning, "");
 	      }
 	    }
 	  }
@@ -312,7 +369,7 @@ part_of_speech_index(vocabulary_table *table, char *as_text)
     for (i = 0; i < n; i++) {
       new_table[i] = parts_of_speech[i];
     }
-    free(parts_of_speech);
+    mulvoc_free(table, parts_of_speech);
     table->parts_of_speech = new_table;
     table->parts_of_speech_table_size = new_size;
   }
@@ -348,7 +405,7 @@ sense_index(vocabulary_table *table,
     for (i = 0; i < n; i++) {
       new_table[i] = senses[i];
     }
-    free(senses);
+    mulvoc_free(table, senses);
     table->senses = new_table;
     table->senses_table_size = new_size;
   }
@@ -383,7 +440,7 @@ form_index(vocabulary_table *table,
     for (i = 0; i < n; i++) {
       new_table[i] = forms[i];
     }
-    free(forms);
+    mulvoc_free(table, forms);
     table->forms = new_table;
     table->forms_table_size = new_size;
   }
@@ -392,6 +449,59 @@ form_index(vocabulary_table *table,
   table->forms[n] = new_text;
   table->n_forms = n+1;
   return n;
+}
+
+int
+property_index(vocabulary_table *table,
+	   char *as_text)
+{
+  int i;
+  int n = table->n_properties;
+  char **properties = table->properties;
+  char *new_text;
+
+  if ((as_text == NULL) || (as_text[0] == '\0')) {
+    return -1;
+  }
+
+  for (i = 0; i < n; i++) {
+    if (strcmp(as_text, properties[i]) == 0) {
+      return i;
+    }
+  }
+  if (n == table->property_table_size) {
+    int new_size = table->property_table_size * 2;
+    char **new_table = (char**)mulvoc_malloc(table, new_size * sizeof(char*));
+    for (i = 0; i < n; i++) {
+      new_table[i] = properties[i];
+    }
+    mulvoc_free(table, properties);
+    table->properties = new_table;
+    table->property_table_size = new_size;
+  }
+  new_text = (char*)mulvoc_malloc(table, strlen(as_text)+1);
+  strcpy(new_text, as_text);
+  table->properties[n] = new_text;
+  table->n_properties = n+1;
+  return n;
+}
+
+char *
+language_property_string(vocabulary_table *table,
+			 int language_index,
+			 int property_index)
+{
+  vocabulary_language *language = table->languages[language_index];
+  language_property *p;
+
+  for (p = language->properties;
+       p != NULL;
+       p = p->next) {
+    if (p->key = property_index) {
+      return p->value;
+    }
+  }
+  return NULL;
 }
 
 hash_chain_unit*
@@ -547,6 +657,7 @@ find_language_word_in_meaning(vocabulary_meaning *meaning, int lang_index)
 }
 
 #define MAX_TYPE 256
+#define MAX_PRAGMA 256
 #define MAX_FIXUP 1024
 
 int
@@ -678,10 +789,10 @@ read_vocab_file(const char *filename,
     int i;
     for (i = 0; i < n_columns; i++) {
       vocabulary_language *lang = language_columns[i];
-      
+
       if (lang) {
 	printf("column %d: %s(%d)\n", i, &(lang->code[0]), lang->language_number);
-      } else { 
+      } else {
 	printf("column %d: not a language column\n", i);
       }
     }
@@ -698,6 +809,8 @@ read_vocab_file(const char *filename,
     char row_type[MAX_TYPE];
     char row_sense[MAX_TYPE];
     char row_form[MAX_TYPE];
+    char current_pragma_name[MAX_PRAGMA];
+    int current_pragma_index = -1;
     /* These are indices into the arrays of type, sense and form. */
     int row_type_index, row_sense_index, row_form_index;
 
@@ -706,7 +819,7 @@ read_vocab_file(const char *filename,
       vocabulary_meaning *row_meaning = NULL;
       column = 0;		/* spreadsheet column, not character column */
       doing_language_names = 0;	/* non-zero if on the language-names row */
-      row_type[0] = row_sense[0] = row_form[0] = '\0';
+      row_type[0] = row_sense[0] = row_form[0] = current_pragma_name[0] = '\0';
       row_type_index = -1;
       row_sense_index = -1;
       row_form_index = -1;
@@ -725,11 +838,19 @@ read_vocab_file(const char *filename,
 		/* Handle comments, pragmata etc */
 		if (c == '#') {
 		  if (column == 0) {
-		    if (strncmp(p, "#languagename", cell_length) == 0) {
+		    int pragma_length = cell_length;
+		    if (strncmp(p, "#languagename", pragma_length) == 0) {
 		      doing_language_names = 1;
+		    } else {
+		      if (pragma_length > MAX_PRAGMA) {
+			pragma_length = MAX_PRAGMA;
+		      }
+		      strncpy(current_pragma_name, p+1, pragma_length-1);
+		      current_pragma_name[pragma_length-1] = '\0';
+		      current_pragma_index = property_index(table, current_pragma_name);
 		    }
 		    if (table->tracing & TRACE_PRAGMATA) {
-		      printf("got pragma %.*s\n", cell_length, p);
+		      printf("got pragma %s\n", current_pragma_name);
 		    }
 		  } else {
 		    if (table->tracing & TRACE_COMMENTS) {
@@ -737,9 +858,9 @@ read_vocab_file(const char *filename,
 		    }
 		  }
 
-		  /* 
-		     A normal data cell (neither pragma nor comment).
-		     Look to see whether it is one of the special columns.
+		  /*
+		    A normal data cell (neither pragma nor comment).
+		    Look to see whether it is one of the special columns.
 		  */
 		} else {
 		  if (column == type_column) {
@@ -766,6 +887,15 @@ read_vocab_file(const char *filename,
 			strncpy(name, p, cell_length);
 			name[cell_length] = '\0';
 		      }
+		    } else if (current_pragma_index >= 0) {
+		      language_property *new_prop = (language_property*)mulvoc_malloc(table, sizeof(language_property));
+		      char *new_val = (char*)mulvoc_malloc(table, 1+cell_length);
+		      strncpy(new_val, p, cell_length);
+		      new_val[cell_length] = '\0';
+		      new_prop->key = current_pragma_index;
+		      new_prop->value = new_val;
+		      new_prop->next = language_columns[column]->properties;
+		      language_columns[column]->properties = new_prop;
 		    } else {
 		      /* We are probably in a normal cell of a normal row */
 		      hash_chain_unit* word_data;
@@ -773,144 +903,171 @@ read_vocab_file(const char *filename,
 		      part_of_speech_chain_unit *word_type_data;
 		      sense_chain_unit *word_type_sense_data;
 		      form_chain_unit *word_type_sense_form_data;
-		      char *new_word_text = (char*)mulvoc_malloc(table, cell_length + 1);
-		      strncpy(new_word_text, p, cell_length);
-		      if (table->tracing & TRACE_READ) {
-			fprintf(stderr, "got word %s in column %d which is %s(%d):%s:%s in %s\n", new_word_text, column, row_type, row_type_index, row_form, row_sense, lang_name);
-		      }
 		      if (word_lang == NULL) {
 		      } else {
-			/* Now we really have got a word, so store it */
-			vocabulary_word *word_in_chain;
-			vocabulary_meaning *existing_meaning;
-			int link_word = 0;
-
-			word_data = get_word_data(table,
-						  new_word_text);
-			word_language_data = get_word_language_data(table,
-								    word_data,
-								    word_lang->language_number);
-			word_type_data = get_word_language_type_data(table,
-								     word_language_data,
-								     row_type_index);
-			word_type_sense_data = get_word_language_type_sense_data(table,
-										 word_type_data,
-										 row_sense_index);
-			word_type_sense_form_data = get_word_language_type_sense_form_data(table,
-											   word_type_sense_data,
-											   row_form_index);
-
-			/* Get the existing meaning, if there is one */
-			existing_meaning = word_type_sense_form_data->meaning;
-
-			/* fprintf(stderr, "\n  %s: row meaning %#lx, old meaning %#lx\n", new_word_text, (unsigned long)row_meaning, (unsigned long)(word_type_sense_form_data->meaning)); */
-
-			if (row_meaning == NULL) {
-			  /* There are no previous occupied word cells
-			     on this row */
-			  nfixups = 0;
-#ifdef debug_merges
-			  fprintf(stderr, "Cleared fixups\n");
-#endif
-			  if (existing_meaning != NULL) {
-			    /* The word already has a meaning we can
-			       use, and we haven't yet started a new
-			       one, so just tag on to the old one */
-#ifdef debug_merges
-			    fprintf(stderr, "    link-word in first column; using existing instead of empty new\n");
-#endif
-			    link_word = 1;
-			    row_meaning = existing_meaning;
-			  } else {
-			    /* We are on the first occupied word cell
-			       of this row, and there is no
-			       existing_meaning for this word+language
-			       combination; so now we allocate a
-			       meaning for this row */
-#ifdef debug_merges
-			    fprintf(stderr, "    starting new meaning\n");
-#endif
-			    row_meaning = (vocabulary_meaning*)mulvoc_malloc(table,
-									     sizeof(vocabulary_meaning));
-			    row_meaning->next = NULL;
-			    row_meaning->words = NULL;
-			    row_meaning->part_of_speech = row_type_index;
-			    row_meaning->sense_index = row_sense_index;
-			    row_meaning->form_index = row_form_index;
+			char *q = p;
+			int more_synonyms = 1;
+			while (more_synonyms && (q < cell_end)) {
+			  char *next_comma = strchr(q, ',');
+			  char *next_slash = strchr(q, '/');
+			  char *word_end = cell_end;
+			  int word_length;
+			  if ((next_comma == NULL) && (next_slash == NULL)) {
+			    more_synonyms = 0;
 			  }
-			} else {
-#ifdef debug_merges
-			  fprintf(stderr, "    %s: this row already has meaning %#lx, old is %#lx-->%#lx...\n", new_word_text, row_meaning, existing_meaning, existing_meaning ? existing_meaning->words : 0);
+			  if ((next_comma != NULL) && (next_comma < word_end)) {
+			    word_end = next_comma;
+			  }
+			  if ((next_slash != NULL) && (next_slash < word_end)) {
+			    word_end = next_slash;
+			  }
+#if 0
+			  /* todo: I want to strip the space here --- but when I enable this, I get a SEGV */
+			  if (*q == ' ') {
+			    fprintf(stderr, "skipping space, now on %.*s\n", word_end-q, q);
+			    q++;
+			    fprintf(stderr, "skipped space, now on %.*s\n", word_end-q, q);
+			  }
 #endif
-			  if ((existing_meaning != NULL)
-			      && (existing_meaning->words !=NULL)
-			      && (existing_meaning != row_meaning)
-			      ) {
-			    /* We have a new meaning and an old one, so must merge them */
-			    vocabulary_word *scanning_word;
-			    int ifixup;
-#ifdef debug_merges
-			    fprintf(stderr, "    really merging meanings\n");
-#endif
-			    link_word = 1;
+			  word_length = word_end - q;
+			  fprintf(stderr, "word %.*s (%d)\n", word_length, q, word_length);
+			  {
+			    char *new_word_text = (char*)mulvoc_malloc(table, word_length + 1);
+			    /* Now we really have got a word, so store it */
+			    vocabulary_word *word_in_chain;
+			    vocabulary_meaning *existing_meaning;
+			    int link_word = 0;
+			    strncpy(new_word_text, q, word_length);
+			    new_word_text[word_length] = '\0';
+			    if (table->tracing & TRACE_READ) {
+			      fprintf(stderr, "got word %s in column %d which is %s(%d):%s:%s in %s\n", new_word_text, column, row_type, row_type_index, row_form, row_sense, lang_name);
+			    }
 
-			    /* find end of existing_meaning words */
-			    for (scanning_word = existing_meaning->words;
-				 scanning_word->next != NULL;
-				 scanning_word = scanning_word->next) {
-#ifdef debug_merges
-			      fprintf(stderr, "        scanning_word at %#lx=%s:%s, next at %#lx\n", scanning_word, table->languages[scanning_word->language]->code, scanning_word->text, scanning_word->next);
-#endif
+			    word_data = get_word_data(table,
+						      new_word_text);
+			    word_language_data = get_word_language_data(table,
+									word_data,
+									word_lang->language_number);
+			    word_type_data = get_word_language_type_data(table,
+									 word_language_data,
+									 row_type_index);
+			    word_type_sense_data = get_word_language_type_sense_data(table,
+										     word_type_data,
+										     row_sense_index);
+			    word_type_sense_form_data = get_word_language_type_sense_form_data(table,
+											       word_type_sense_data,
+											       row_form_index);
+
+			    /* Get the existing meaning, if there is one */
+			    existing_meaning = word_type_sense_form_data->meaning;
+
+#if 1
+			    if (existing_meaning == row_meaning) {
+			      fprintf(stderr, "existing_meaning == row_meaning!\n");
+			      /* todo: skip the extra work */
 			    }
-			    scanning_word->next = row_meaning->words;
-			    /* Remove any pointers to the unmerged meaning: */
-			    for (ifixup = 0; ifixup < nfixups; ifixup++) {
-			      if (1 || *fixups[ifixup] == row_meaning) {
-#ifdef debug_merges
-				fprintf(stderr, "        fixing up %#lx which was %#lx to point to %#lx\n", (unsigned long)fixups[ifixup], (unsigned long)*fixups[ifixup], (unsigned long)existing_meaning);
 #endif
-				*fixups[ifixup] = existing_meaning;
+			    if (row_meaning == NULL) {
+			      /* There are no previous occupied word cells
+				 on this row */
+			      nfixups = 0;
+			      if (existing_meaning != NULL) {
+				/* The word already has a meaning we can
+				   use, and we haven't yet started a new
+				   one, so just tag on to the old one */
+				link_word = 1;
+				row_meaning = existing_meaning;
+			      } else {
+				/* We are on the first occupied word cell
+				   of this row, and there is no
+				   existing_meaning for this word+language
+				   combination; so now we allocate a
+				   meaning for this row */
+				row_meaning = (vocabulary_meaning*)mulvoc_malloc(table,
+										 sizeof(vocabulary_meaning));
+#ifdef debug
+				row_meaning->meaning_id = table->next_meaning_id++;
+#endif
+				row_meaning->next = NULL;
+				row_meaning->words = NULL;
+				row_meaning->part_of_speech = row_type_index;
+				row_meaning->sense_index = row_sense_index;
+				row_meaning->form_index = row_form_index;
 			      }
-			    }
-			    /* Now switch to using the combined meaning from now on (and fixup old references): */
-			    {
-			      vocabulary_meaning *m;
-			      for (m = table->meanings; m != NULL; m = m->next) {
-				if (m->next == row_meaning) {
-#ifdef debug_merges
-				  fprintf(stderr, "      replacing meaning %#lx with %#lx in global meanings chain\n", row_meaning, existing_meaning);
-#endif
-				  m->next = existing_meaning;
+			    } else {
+			      /* We have already started to build a row,
+				 and must now merge it with the existing
+				 row that we've just found */
+			      if ((existing_meaning != NULL)
+				  && (existing_meaning->words !=NULL)
+				  && (existing_meaning != row_meaning)
+				  ) {
+				/* We have a new meaning and an old one, so must merge them */
+				vocabulary_word *scanning_word;
+				int ifixup;
+				if (table->tracing & TRACE_MERGE) {
+				  fprintf(stderr, "    really merging meanings\n");
+				  show_meaning(stderr, table, row_meaning, "    row meaning: ");
+				  show_meaning(stderr, table, existing_meaning, "    old meaning: ");
+				  show_meanings(stderr, table, "meanings before merging\n", "%d meanings (before merging)\n", "\t");
 				}
+				link_word = 1;
+
+				/* find end of existing_meaning words */
+				for (scanning_word = existing_meaning->words;
+				     scanning_word->next != NULL;
+				     scanning_word = scanning_word->next) {
+				}
+				scanning_word->next = row_meaning->words;
+				if (table->tracing & TRACE_MERGE) {
+				  show_meaning(stderr, table, existing_meaning, "    combined meaning: ");
+				  show_meanings(stderr, table, "meanings after merging\n", "%d meanings (after merging)\n", "\t");
+				}
+				/* Remove any pointers to the unmerged meaning: */
+				for (ifixup = 0; ifixup < nfixups; ifixup++) {
+				  if (*fixups[ifixup] == row_meaning) {
+				    *fixups[ifixup] = existing_meaning;
+				  }
+				}
+				/* Now switch to using the combined meaning from now on (and fixup old references): */
+				{
+				  vocabulary_meaning *m;
+				  int i = 0;
+				  for (m = table->meanings; m != NULL; m = m->next) {
+				    if (m->next == row_meaning) {
+				      m->next = m->next->next;
+				    }
+				    i++;
+				  }
+				}
+				table->n_meanings--;
+				mulvoc_free(table, row_meaning);
+				if (table->meanings == row_meaning) {
+				  table->meanings = existing_meaning;
+				}
+				row_meaning = existing_meaning;
 			      }
 			    }
-			    free(row_meaning);
-			    row_meaning = existing_meaning;
+
+			    word_type_sense_form_data->meaning = row_meaning;
+			    if (nfixups >= MAX_FIXUP) {
+			      fprintf(stderr, "Too many fixups\n");
+			      exit(1);
+			    }
+			    fixups[nfixups++] = &(word_type_sense_form_data->meaning);
+
+
+			    if (!link_word) {
+			      /* Now add the word to the meaning */
+			      word_in_chain = (vocabulary_word*)mulvoc_malloc(table, sizeof(vocabulary_word));
+			      word_in_chain->text = new_word_text;
+			      word_in_chain->language = word_lang->language_number;
+
+			      word_in_chain->next = row_meaning->words;
+			      row_meaning->words = word_in_chain;
+			    }
 			  }
-			}
-
-			word_type_sense_form_data->meaning = row_meaning;
-			if (nfixups >= MAX_FIXUP) {
-			  fprintf(stderr, "Too many fixups\n");
-			  exit(1);
-			}
-#ifdef debug_merges
-			fprintf(stderr, "    Recording fixup at %#lx\n", (unsigned long)&(word_type_sense_form_data->meaning));
-#endif
-			fixups[nfixups++] = &(word_type_sense_form_data->meaning);
-			
-
-			if (!link_word) {
-			  /* Now add the word to the meaning */
-			  word_in_chain = (vocabulary_word*)mulvoc_malloc(table, sizeof(vocabulary_word));
-#ifdef debug_merges
-			  fprintf(stderr, "    adding non-link word %s in at %#lx\n", new_word_text, word_in_chain);
-#endif
-			  word_in_chain->text = new_word_text;
-			  word_in_chain->language = word_lang->language_number;
-
-			  word_in_chain->next = row_meaning->words;
-			  row_meaning->words = word_in_chain;
+			  q = word_end+1;
 			}
 		      }
 		    }
@@ -927,35 +1084,27 @@ read_vocab_file(const char *filename,
 	}
 	prev_c = c;
       }
+      current_pragma_name[0] = '\0';
+      current_pragma_index = -1;
+
+      /* We've finished reading the row */
 
       if (row_meaning != NULL) {
 	int got_already = 0;
 	vocabulary_meaning *m;
-#ifdef debug_merges
-	fprintf(stderr, "    Adding %#lx to collected meanings(%#lx)\n", (unsigned long)row_meaning, (unsigned long)table->meanings);
-#endif
 	for (m = table->meanings; m != NULL; m = m->next) {
-#ifdef debug_merges
-	    fprintf(stderr, "      Looking at %#lx\n", m);
-#endif
 	  if (m == row_meaning) {
-#ifdef debug_merges
-	    fprintf(stderr, "        already got %#lx\n", m);
-#endif
 	    got_already = 1;
 	    break;
 	  }
 	}
 	if (!got_already) {
-#ifdef debug_merges
-	  fprintf(stderr, "    Did not already have %#lx\n", m);
-#endif
 	  row_meaning->next = table->meanings;
 	  table->meanings = row_meaning;
 	  table->n_meanings++;
 	}
       }
-      
+
       if (table->tracing & TRACE_READ) {
 	fprintf(stderr, "\n");
       }
@@ -963,7 +1112,7 @@ read_vocab_file(const char *filename,
 
   }
   munmap(vocab_file_buf_start, vocab_file_size);
-  free(language_columns);
+  mulvoc_free(table, language_columns);
   close(vocab_fd);
 }
 
@@ -998,7 +1147,7 @@ get_word_translations_string(vocabulary_table *table,
 	     form = form->next) {
 	  int f_index = form->form_index;
 	  vocabulary_meaning *meaning = form->meaning;
-	  vocabulary_word *word; 
+	  vocabulary_word *word;
 
 	  for (word = meaning->words;
 	       word != NULL;
@@ -1019,6 +1168,127 @@ get_word_translations_string(vocabulary_table *table,
   return result_space;
 }
 
+int
+count_language_words(vocabulary_table *table,
+		     int language_index,
+		     int all_synonyms)
+{
+  int n = 0;
+
+  vocabulary_meaning *m;
+
+  for (m = table->meanings; m != NULL; m = m->next) {
+    vocabulary_word *w;
+    // show_meaning(stderr, table, m, "?\t");
+    for (w = m->words; w != NULL; w = w->next) {
+#if 0
+      fprintf(stderr, "\t\t%s %d\n", w->text, w->language);
+#endif
+      if (w->language == language_index) {
+	n++;
+	if (!all_synonyms) {
+	  break;
+	}
+      }
+    }
+  }
+
+  return n;
+}
+
+int
+sort_word_order(const void *a, const void *b)
+{
+  sorted_vocab_word *wa = (sorted_vocab_word*)a;
+  sorted_vocab_word *wb = (sorted_vocab_word*)b;
+  return strcmp(wa->as_text, wb->as_text);
+}
+
+int
+vocabulary_keyed_by_language(vocabulary_table *table,
+			     int key_language_index,
+			     int all_synonyms,
+			     int sorted)
+{
+  int n_words = count_language_words(table, key_language_index, all_synonyms);
+  sorted_vocab_word *next;
+  vocabulary_meaning *m;
+
+#if 0
+  fprintf(stderr, "%d words in %d(%s)\n", n_words, key_language_index, table->languages[key_language_index]->code);
+#endif
+
+  if (table->keyed != NULL) { mulvoc_free(table, table->keyed); }
+  table->keyed = (sorted_vocab_word*)mulvoc_malloc(table, n_words * sizeof(sorted_vocab_word));
+
+  next = table->keyed;
+
+  for (m = table->meanings; m != NULL; m = m->next) {
+    vocabulary_word *w;
+    for (w = m->words; w != NULL; w = w->next) {
+      if (w->language == key_language_index) {
+	next->as_text = w->text;
+	next->meaning = m;
+	next++;
+	if (!all_synonyms) {
+	  break;
+	}
+      }
+    }
+  }
+
+  if (sorted) {
+    qsort(table->keyed,
+	  n_words,
+	  sizeof(sorted_vocab_word),
+	  sort_word_order);
+  }
+
+  return n_words;
+}
+
+#define LANG_SPEC_SEPARATOR ','
+
+int
+language_indices(vocabulary_table *table,
+		 char *languages_string,
+		 int **languages)
+{
+  if ((languages_string != NULL) && (languages_string[0] != '\0')) {
+    /* pick specific languages */
+    int n = 1;
+    int i;
+    int *l;
+    char c;
+    char *s = languages_string;
+    while ((c = *s++) != '\0') {
+      if (c == LANG_SPEC_SEPARATOR) {
+	n++;
+      }
+    }
+    l = (int*)mulvoc_malloc(table, n * sizeof(int));
+    *languages = l;
+    s = languages_string;
+    for (i = 0; i < n; i++) {
+      /* strchrnul is meant to be declared when you define _GNU_SOURCE and include string.h
+       but on the development system (debian) it didn't work, hence the cast. */
+      char *s1 = (char*) strchrnul(s, LANG_SPEC_SEPARATOR);
+      l[i] = language_index(table, s, s1 - s);
+      s = s1 + 1;
+    }
+    return n;
+  } else {
+    /* use all the languages */
+    int n = table->n_languages;
+    int *l = (int*)mulvoc_malloc(table, n * sizeof(int));
+    int i;
+    *languages = l;
+    for (i = 0; i < n; i++) {
+      l[i] = table->languages[i]->language_number;
+    }
+    return n;
+  }
+}
 
 void
 start_tracing(vocabulary_table *table, int flags)
