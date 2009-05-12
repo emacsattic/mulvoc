@@ -1,5 +1,5 @@
 /* voclu.c
-   Time-stamp: <2009-05-11 22:22:50 jcgs>
+   Time-stamp: <2009-05-12 14:25:56 jcgs>
  */
 
 #include <stdio.h>
@@ -96,7 +96,7 @@ main(int argc, char **argv)
   if (verbose) {
     fprintf(stderr, "Reading dictionary %s\n", dictionary);
   }
-  
+
   read_vocab_file(dictionary, &table);
 
   if (language_in_code != NULL) {
@@ -132,7 +132,14 @@ main(int argc, char **argv)
     char out_buf[BUFFER_SIZE];
 
     while (fgets(in_buf, BUFFER_SIZE, stdin)) {
-      /* todo: fix this, it's not printing any result */
+      char *p;
+      out_buf[0] = '\0';
+
+      for (p = in_buf; (*p != '\n') && (*p != '\r') && (*p != '\0'); p++) {
+      }
+
+      *p = '\0';
+
       printf("%s: %s\n",
 	     in_buf,
 	     get_word_translations_string(&table, in_buf,
