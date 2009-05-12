@@ -2,7 +2,8 @@
 "#languagename","british","sense",,"english","irish","gaelic","manx","cornish","welsh","breton","norwegian","swedish","danish","icelandic","german","dutch","frisian","czech","slovak","polish","russian","finnish","estonian","basque","latin","romanian","italian","provencal","french","catalan","portuguese","spanish","hebrew, biblical hebrew","modern hebrew","maltese","mongolian","japanese","romaji","ainu","chinese","pinyin","galician","aragonese",,,"saxon","hungarian","bulgarian","esperanto","interlingua",
 "#input-methods",,"nil",,"british","irish",,,"british","welsh",,"norwegian","swedish","danish-postfix","icelandic-postfix","german","dutch",,"czech-qwerty","slovak","polish-slash","russian-computer","finnish",,"basque",,"romanian-prefix","italian-postfix",,"french-prefix",,"portuguese, portuguese-prefix","spanish-prefix","hebrew","hebrew",,,"japanese-hiragana","romaji",,"chinese-tonepy","tone-pinyin-as-such",,,,,,,,,,
 "#background",,,,"white","white",,,"black",,,"red","blue",,,"orange","blue",,,,"red","blue","white",,,,,"red",,,,"green",,,,,"red","white","white",,"red","red",,,,,,,,,,
-"#color",,,,"blue","green",,,"white",,,"blue","yellow",,,"black","red",,,,"white","white","blue",,,,,"green",,,,"red",,,,,"blue","red","red",,"yellow","yellow",,,,,,,,,,"adjective",,"free",,,,,,,,,,,,,,,,,,,,"vapaa, ilmainen",,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"#color",,,,"blue","green",,,"white",,,"blue","yellow",,,"black","red",,,,"white","white","blue",,,,,"green",,,,"red",,,,,"blue","red","red",,"yellow","yellow",,,,,,,,,,
+"adjective",,"free",,,,,,,,,,,,,,,,,,,,"vapaa, ilmainen",,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 "adjective?",,,,,,,,,,,"gjengitt",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 "phrase",,,,,"go dtugaim",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 "unknown",,,,,,,,,,,,"synts, olika",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
@@ -216,7 +217,7 @@
 "preposition",,,25/05/08,"between","idir",,,,,,,"emellan, mellan","mellem",,"zwischen","tussen","tusken",,,"pomiędzy","между","välissä",,,"inter",,"tra",,"entre",,,"entre",,"בין",,,"間",,,,,,,,,,,,"inter",,
 "noun",,,25/05/08,"bicycle","rothar(m)",,"daachiarkyl","deuros","beic","bisiklet","sykkel","cykel","cykel",,"fahrrad(n)","fiets","fyts","jizdní kolo","bicykel","rower","велосипед","polkupyörä","jalgratas",,,"bicicletă","bicicletta",,"bicyclette",,,"bicicleta",,"אופניים","rota",,"自転車",,,,,,,,,,"kerékpár","колело","biciklo",,
 "adjective","root",,25/05/08,"big","mór",,,,"mawr",,"stor","stor","stor","stór","groß, gross","groot","grut","velký","veľký","duży","большой","iso",,,"magnus","mare","grande",,"grand","gran",,"grande",,"גדול",,,"大きい",,,,,,,,,,"nagy","голям","granda","grande",
-"adjective",,,25/05/08,"big","mór","mòr","mooar",,"mawr",,"stor","stor","stor","stór","groß","groot","grut","velký","veľký, velju","duży,wielki","большой,великий","iso",,"handi","magnus,grandis","mare","grande",,"grand","gran,gros","grande","grande",,"גדול",,,"大きい",,,,,"grande","gran","bèl, a","gran, a","groot","nagy","голям","granda","grande","27"
+"adjective",,,25/05/08,"big","mór","mòr","mooar",,"mawr",,"stor","stor","stor","stór","groß","groot","grut","velký","veľký, velju","duży,wielki","большой,великий","iso",,"handi","magnus,grandis","mare","grande",,"grand","gran,gros","grande","grande",,"גדול",,,"大きい",,,,,"grande","gran","bèl","gran","groot","nagy","голям","granda","grande","27"
 "noun",,,,"big bang","ollphléasc",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 "adjective","comparative",,,"bigger","mó",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 "noun",,"plant",,"bindweed, convulvulus","ialus",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
