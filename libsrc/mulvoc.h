@@ -1,5 +1,5 @@
 /* mulvoc.c
-   Time-stamp: <2009-05-04 16:03:03 jcgs>
+   Time-stamp: <2009-05-11 21:34:05 jcgs>
    C definitions for MuLVoc data (multi-lingual vocabulary)
 
    Copyright J. C. G. Sturdy 2009
@@ -43,7 +43,6 @@ typedef struct vocabulary_language {
  */
 typedef struct vocabulary_word {
   struct vocabulary_word *next;
-  /* vocabulary_language *language; */
   int language;
   char *text;
 } vocabulary_word;
@@ -223,6 +222,10 @@ extern int vocabulary_keyed_by_language(vocabulary_table *table,
 
 extern char *get_word_translations_string(vocabulary_table *table,
 					  char *as_text,
+					  int language_in,
+					  int pos_in,
+					  int sense_in,
+					  int form_in,
 					  char *result_section_format,
 					  char *result_space,
 					  int result_size);
@@ -268,12 +271,16 @@ extern void mulvoc_output_html(FILE *output_stream,
 			       int n_languages,
 			       int key_idx,
 			       char *table_opts,
-			       char *blank);
+			       char *blank,
+			       int table_controlled);
 
 extern void mulvoc_output_csv(FILE *output_stream,
 			      vocabulary_table *table,
 			      int *languages,
 			      int n_languages,
 			      int key_idx);
+
+extern unsigned int count_meaning_words(vocabulary_table *table, vocabulary_meaning *meaning, int verbose);
+extern unsigned int check_table_data(vocabulary_table *table, int verbose);
 
 /* mulvoc.h ends here */
