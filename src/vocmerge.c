@@ -1,5 +1,5 @@
 /* vocmerge.c
-   Time-stamp: <2009-05-04 16:42:47 jcgs>
+   Time-stamp: <2009-05-10 18:22:23 jcgs>
  */
 
 #include <stdio.h>
@@ -12,11 +12,12 @@
 
 #define BUFFER_SIZE (256*256)
 
-static const char *short_options = "a:b:Hhl:o:ps:t:v";
+static const char *short_options = "a:b:cHhl:o:ps:t:v";
 
 static struct option long_options[] = {
   {"attributes", required_argument, 0, 'a'},
   {"blank", required_argument, 0, 'b'},
+  {"controlled", no_argument, 0, 'c'},
   {"help", no_argument, 0, 'H'},
   {"html", no_argument, 0, 'h'},
   {"html-page", no_argument, 0, 'p'},
@@ -41,9 +42,11 @@ print_usage(char *progname)
   fprintf(stderr, "  --title (-t) TITLE       use TITLE for html page\n");
   fprintf(stderr, "  --attributes (-a) ATTRS  use ATTRS for html table attributes\n");
   fprintf(stderr, "  --blank (-b) TEXT        use TEXT for blank cells\n");
+  fprintf(stderr, "  --controlled (-c)        use colours etc from input\n");
   fprintf(stderr, "  --verbose (-b)           turn on debugging\n");
   fprintf(stderr, "\n--title implies --html-page\n");
-  fprintf(stderr, "--attributes or --blank imply --html\n");
+  fprintf(stderr, "--attributes or --blank or --controlled imply --html\n");
+  fprintf(stderr, "--output whatever.htm[l] implies --html\n");
   fprintf(stderr, "\nIf html is not selected, output is as csv.\n");
 }
 
@@ -60,6 +63,7 @@ main(int argc, char **argv)
   char *language_code = "ENG";
   char *languages_string = NULL;
   int verbose = 0;
+  int table_controlled = 0;
 
   vocabulary_table table;
 
@@ -81,9 +85,15 @@ main(int argc, char **argv)
     case 'H': print_usage(argv[0]); exit(0); break;
     case 'a': html = 1; attributes = optarg; break;
     case 'b': html = 1; blank = optarg; break;
+    case 'c': table_controlled = 1; html = 1; break;
     case 'h': html = 1; break;
     case 'l': languages_string = optarg; break;
-    case 'o': output_file_name = optarg; break;
+    case 'o': output_file_name = optarg;
+      if ((strcmp(output_file_name + strlen(output_file_name) - 5, ".html") == 0)
+	  || (strcmp(output_file_name + strlen(output_file_name) - 4, ".htm") == 0)) {
+	html = 1;
+      }
+      break;
     case 'p': page = html = 1; break;
     case 's': language_code = optarg; break;
     case 't': page = html = 1; title = optarg; break;
@@ -119,7 +129,8 @@ main(int argc, char **argv)
 			 languages, n_languages,
 			 key_idx,
 			 attributes,
-			 blank);
+			 blank,
+			 table_controlled);
 
       if (page) {
 	fprintf(output_stream, "</body>\n</html>\n");
