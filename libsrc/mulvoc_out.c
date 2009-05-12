@@ -1,5 +1,5 @@
 /* mulvoc_data.c
-   Time-stamp: <2009-05-04 17:11:35 jcgs>
+   Time-stamp: <2009-05-10 18:38:08 jcgs>
    Output MuLVoc data (multi-lingual vocabulary) as CSV or HTML
 
    Copyright J. C. G. Sturdy 2009
@@ -31,11 +31,14 @@ mulvoc_output_html(FILE *output_stream,
 		   int n_languages,
 		   int key_idx,
 		   char *table_opts,
-		   char *blank)
+		   char *blank,
+		   int table_controlled)
 {
   int i_lang;
   int rows = vocabulary_keyed_by_language(table, key_idx, 0, 1);
   int i_row;
+  int color_index = table_controlled ? property_index(table, "color") : -1;
+  int bgcolor_index = table_controlled ? property_index(table, "background") : -1;
 
   if (languages == NULL) {
     n_languages = language_indices(table, NULL, &languages);
@@ -71,8 +74,21 @@ mulvoc_output_html(FILE *output_stream,
     for (i_lang = 0; i_lang < n_languages; i_lang++) {
       vocabulary_word *word = find_language_word_in_meaning(meaning, languages[i_lang]);
       if (word != NULL) {
-	fprintf(output_stream, "    <td lang=\"%s\">%s</td>\n",
-		table->languages[word->language]->code,
+	char *color_string = language_property_string(table,
+						      i_lang,
+						      color_index);
+	char *bgcolor_string = language_property_string(table,
+						      i_lang,
+						      bgcolor_index);
+	fprintf(output_stream, "    <td lang=\"%s\"",
+		table->languages[word->language]->code);
+	if (color_string) {
+	  fprintf(output_stream, " text=\"%s\"", color_string);
+	}	
+	if (bgcolor_string) {
+	  fprintf(output_stream, " bgcolor=\"%s\"", bgcolor_string);
+	}	
+	fprintf(output_stream, ">%s</td>\n",
 		word->text);
       } else {
 	if (blank != NULL) {
