@@ -1,3 +1,31 @@
+2009-05-11  John C G Sturdy  <john.sturdy@ul.ie>
+
+	* src/voclu.c (main): Wrote vocabulary lookup program.
+
+	* libsrc/mulvoc_data.c (get_word_translations_string): passed in
+	language, part of speech, sense and form to restrict the
+	translations too.  If negative, they mean no restriction.
+
+2009-05-10  John C G Sturdy  <john.sturdy@ul.ie>
+
+	* libsrc/mulvoc_data.c (read_vocab_file): Fixed the fixups, so
+	that when we delete a row structure because we've merged it with
+	another, all references to the old one get updated.
+
+2009-05-04  John Sturdy  <john.sturdy@ul.ie>
+
+	* libsrc/mulvoc_data.c: Fixed some problems in reading files.
+	
+	* libsrc/mulvoc_out.c: Sorting, specifying columns
+
+2009-03-29  John C G Sturdy  <john.sturdy@ul.ie>
+
+	* libsrc/mulvoc_data.c (language_indices): New function.
+
+	* libsrc/mulvoc_out.c (mulvoc_output_meaning): New function; I
+	made this one separate from mulvoc_output_csv because I thought it
+	might be a useful debugging routine too.
+
 2009-03-14  John C G Sturdy  <john.sturdy@ul.ie>
 
 	* Created this ChangeLog.
