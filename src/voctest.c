@@ -1,5 +1,5 @@
 /* voctest.c
-   Time-stamp: <2009-05-01 21:05:01 jcgs>
+   Time-stamp: <2009-05-11 21:37:04 jcgs>
  */
 
 #include <stdio.h>
@@ -35,7 +35,7 @@ show_usage(char *program)
 int
 main(int argc, char **argv)
 {
-  int verbose = 0;
+  int trace_flags = 0;
   int print_metadata = 0;
   int print_data = 0;
   int translate = 0;
@@ -66,14 +66,14 @@ main(int argc, char **argv)
     case 'h': show_usage(argv[0]); exit(0); break;
     case 'm': print_metadata = 1; break;
     case 't': translate = 1; word_in = optarg; break;
-    case 'v': verbose = 1; break;
+    case 'v': trace_flags = TRACE_READ | TRACE_HEADERS | TRACE_PRAGMATA | TRACE_COMMENTS; break;
     default: show_usage(argv[0]); exit(1); break;
     }
   }
 
-  /* note: the table stores its tracing state, so the `verbose'
+  /* note: the table stores its tracing state, so the `trace_flags'
      setting we give here will affect later library calls too. */
-  mulvoc_initialize_table(&table, 1511, START_SIZE, verbose ? -1 : 0);
+  mulvoc_initialize_table(&table, 1511, START_SIZE, trace_flags);
 
   for (; optind < argc; optind++) {
     read_vocab_file(argv[optind], &table);
@@ -96,7 +96,12 @@ main(int argc, char **argv)
 
   if (translate) {
     char buf[BUFFER_SIZE];
-    printf("%s: %s\n", word_in, get_word_translations_string(&table, word_in, "%s: %s; ", buf, BUFFER_SIZE));
+    printf("%s: %s\n",
+	   word_in,
+	   get_word_translations_string(&table, word_in,
+					-1, -1, -1, -1,
+					"%s: %s; ",
+					buf, BUFFER_SIZE));
   }
 
   exit(0);
