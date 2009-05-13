@@ -1,5 +1,5 @@
 /* mulvoc_data.c
-   Time-stamp: <2009-05-11 22:25:50 jcgs>
+   Time-stamp: <2009-05-12 21:17:37 jcgs>
    Read and manage MuLVoc data (multi-lingual vocabulary)
 
    Copyright J. C. G. Sturdy 2009
@@ -88,6 +88,11 @@ mulvoc_initialize_table(vocabulary_table *table,
   table->n_properties = 0;
   table->property_table_size = misc_table_size;
   table->properties = (char**)mulvoc_malloc(table, table->property_table_size
+					    * sizeof(char*));
+
+  table->n_extra_columns = 0;
+  table->extra_column_table_size = misc_table_size;
+  table->extra_column_names = (char**)mulvoc_malloc(table, table->extra_column_table_size
 					    * sizeof(char*));
 
   table->hash_max = hash_size;
@@ -567,6 +572,43 @@ property_index(vocabulary_table *table,
   return n;
 }
 
+int
+extra_column_index(vocabulary_table *table,
+		   char *as_text,
+		   int text_length)
+{
+  int i;
+  int n = table->n_extra_columns;
+  char **columns = table->extra_column_names;
+  char *new_text;
+
+  if ((as_text == NULL) || (as_text[0] == '\0')) {
+    return -1;
+  }
+
+  for (i = 0; i < n; i++) {
+    if (strncmp(as_text, columns[i], text_length) == 0) {
+      return i;
+    }
+  }
+  if (n == table->extra_column_table_size) {
+    int new_size = table->extra_column_table_size * 2;
+    char **new_table = (char**)mulvoc_malloc(table, new_size * sizeof(char*));
+    for (i = 0; i < n; i++) {
+      new_table[i] = columns[i];
+    }
+    mulvoc_free(table, columns);
+    table->extra_column_names = new_table;
+    table->extra_column_table_size = new_size;
+  }
+  new_text = (char*)mulvoc_malloc(table, text_length+1);
+  strncpy(new_text, as_text, text_length);
+  new_text[text_length] = '\0';
+  table->extra_column_names[n] = new_text;
+  table->n_extra_columns = n+1;
+  return n;
+}
+
 char *
 language_property_string(vocabulary_table *table,
 			 int language_index,
@@ -754,6 +796,7 @@ read_vocab_file(const char *filename,
   int form_column = -1;
   int sense_column = -1;
   vocabulary_language** language_columns = NULL;
+  int *extra_columns = NULL;
   char c, *p;
 
   if (stat(filename, &stat_buf) != 0) {
@@ -817,8 +860,10 @@ read_vocab_file(const char *filename,
   {
     int i;
     language_columns = (vocabulary_language**)mulvoc_malloc(table, sizeof(vocabulary_language*) * n_columns);
+    extra_columns = (int*)mulvoc_malloc(table, sizeof(int) * n_columns);
     for (i = 0; i < n_columns; i++) {
       language_columns[i] = NULL;
+      extra_columns[i] = -1;
     }
 #if 0
     fprintf(stderr, "allocated %d language columns\n", n_columns);
@@ -846,9 +891,10 @@ read_vocab_file(const char *filename,
 		type_column = column;
 	      } else if (strncmp("#SENSE", p, code_length) == 0) {
 		sense_column = column;
-	      } else
+	      } else if (strncmp("#FORM", p, code_length) == 0) {
 		form_column = column;
-	      if (strncmp("#FORM", p, code_length) == 0) {
+	      } else {
+		extra_columns[column] = extra_column_index(table, p, code_length);
 	      }
 	    } else {
 	      language_columns[column] = get_language(table, p, code_length);
@@ -944,6 +990,7 @@ read_vocab_file(const char *filename,
 		    if (table->tracing & TRACE_COMMENTS) {
 		      printf("got comment %.*s in column %d\n", cell_length, p, column);
 		    }
+		    fprintf(stderr, "got comment %.*s in column %d\n", cell_length, p, column);
 		  }
 
 		  /*
@@ -965,7 +1012,6 @@ read_vocab_file(const char *filename,
 		    int length = (cell_length > MAX_TYPE) ? MAX_TYPE : cell_length;
 		    strncpy(row_form, p, length);
 		    row_form[length] = '\0';
-		    /* todo: look for other special columns, and remember them */
 		  } else {
 		    /* Not in a special column, this could well be a word -- unless we are in a special row */
 		    vocabulary_language *word_lang = language_columns[column];
@@ -1088,6 +1134,7 @@ read_vocab_file(const char *filename,
 #endif
 				  row_meaning->next = NULL;
 				  row_meaning->words = NULL;
+				  row_meaning->extra_columns = NULL;
 				  row_meaning->part_of_speech = row_type_index;
 				  row_meaning->sense_index = row_sense_index;
 				  row_meaning->form_index = row_form_index;
@@ -1194,6 +1241,31 @@ read_vocab_file(const char *filename,
 	  } else {
 	    if (c == ',') {
 	      column++;
+	    } else {
+	      int column_extra_id = extra_columns[column];
+	      if (column_extra_id >= 0) {
+		extra_column_cell *cell = (extra_column_cell*)mulvoc_malloc(table, sizeof(extra_column_cell));
+		cell->extra_column_index = column_extra_id;
+		cell->value = NULL; /* todo: fix this */
+#if 0
+		printf("got unquoted %.12s in column %d\n", p, column);
+#endif
+		if (row_meaning == NULL) {
+		  row_meaning = (vocabulary_meaning*)mulvoc_malloc(table,
+								   sizeof(vocabulary_meaning));
+#ifdef debug
+		  row_meaning->meaning_id = table->next_meaning_id++;
+#endif
+		  row_meaning->next = NULL;
+		  row_meaning->words = NULL;
+		  row_meaning->extra_columns = NULL;
+		  row_meaning->part_of_speech = row_type_index;
+		  row_meaning->sense_index = row_sense_index;
+		  row_meaning->form_index = row_form_index;
+		}
+		cell->next = row_meaning->extra_columns;
+		row_meaning->extra_columns = cell;
+	      }
 	    }
 	  }
 	}
@@ -1240,6 +1312,7 @@ char *
 get_word_translations_string(vocabulary_table *table,
 			     char *as_text,
 			     int language_in,
+			     int language_out,
 			     int pos_in,
 			     int sense_in,
 			     int form_in,
@@ -1252,6 +1325,7 @@ get_word_translations_string(vocabulary_table *table,
   int format_length = strlen(result_section_format);
   hash_chain_unit *chain_link = get_word_data(table, as_text);
   language_chain_unit *language;
+
   for (language = chain_link->languages;
        language != NULL;
        language = language->next) {
@@ -1281,14 +1355,16 @@ get_word_translations_string(vocabulary_table *table,
 		  for (word = meaning->words;
 		       word != NULL;
 		       word=word->next) {
-		    int this_length = format_length + strlen(table->languages[word->language]->code) + strlen(word->text);
-		    if ((length_remaining - this_length) < 0) {
-		      return NULL;
+		    if ((language_out < 0) || (language_out == word->language)) {
+		      int this_length = format_length + strlen(table->languages[word->language]->code) + strlen(word->text);
+		      if ((length_remaining - this_length) < 0) {
+			return NULL;
+		      }
+		      sprintf(result_so_far, result_section_format, table->languages[word->language]->code, word->text);
+		      this_length = strlen(result_so_far);
+		      result_so_far += this_length;
+		      length_remaining -= this_length;
 		    }
-		    sprintf(result_so_far, result_section_format, table->languages[word->language]->code, word->text);
-		    this_length = strlen(result_so_far);
-		    result_so_far += this_length;
-		    length_remaining -= this_length;
 		  }
 		}
 	      }
