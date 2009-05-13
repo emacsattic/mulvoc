@@ -1,5 +1,5 @@
 /* voclu.c
-   Time-stamp: <2009-05-12 14:25:56 jcgs>
+   Time-stamp: <2009-05-12 20:23:54 jcgs>
  */
 
 #include <stdio.h>
@@ -12,12 +12,15 @@
 
 #define BUFFER_SIZE (256*256)
 
-static const char *short_options = "d:f:l:s:t:v";
+static const char *short_options = "d:f:l:o:s:t:v";
 
 static struct option long_options[] = {
   {"dictionary", required_argument, 0, 'd'},
   {"form", required_argument, 0, 'f'},
+  {"from", required_argument, 0, 'l'},
   {"language", required_argument, 0, 'l'},
+  {"to", required_argument, 0, 'o'},
+  {"out", required_argument, 0, 'o'},
   {"sense", required_argument, 0, 's'},
   {"type", required_argument, 0, 't'},
   {"verbose", no_argument, 0, 'v'},
@@ -33,7 +36,8 @@ show_usage(char *program)
   fprintf(stderr, "  Does vocabulary lookup using CSV files.\n");
   fprintf(stderr, "  Options are:\n");
   fprintf(stderr, "    --dictionary (-d) file \n");
-  fprintf(stderr, "    --language (-l) language\n");
+  fprintf(stderr, "    --from (-l) from_language\n");
+  fprintf(stderr, "    --to (-o) to_language\n");
   fprintf(stderr, "    --type (-t) part-of-speech \n");
   fprintf(stderr, "    --sense (-s) sense\n");
   fprintf(stderr, "    --form (-f) form \n");
@@ -52,10 +56,12 @@ main(int argc, char **argv)
 
   char *dictionary = NULL;
   char *language_in_code = NULL;
+  char *language_out_code = NULL;
   char *type_name = NULL;
   char *sense_name = NULL;
   char *form_name = NULL;
   int language_in = -1;
+  int language_out = -1;
   int type =  -1;
   int sense = -1;
   int form = -1;
@@ -80,6 +86,7 @@ main(int argc, char **argv)
     case 'd': dictionary = optarg; break;
     case 'f': form_name = optarg; break;
     case 'l': language_in_code = optarg; break;
+    case 'o': language_out_code = optarg; break;
     case 's': sense_name = optarg; break;
     case 't': type_name = optarg; break;
     case 'v': verbose = 1; break;
@@ -103,6 +110,10 @@ main(int argc, char **argv)
     language_in = language_index(&table, language_in_code, strlen(language_in_code));
   }
 
+  if (language_out_code != NULL) {
+    language_out = language_index(&table, language_out_code, strlen(language_out_code));
+  }
+
   if (type_name != NULL) {
     type = part_of_speech_index(&table, type_name);
   }
@@ -121,6 +132,7 @@ main(int argc, char **argv)
 	   argv[optind],
 	   get_word_translations_string(&table, argv[optind],
 					language_in,
+					language_out,
 					type, sense, form,
 					"%s: %s; ",
 					buf, BUFFER_SIZE));
@@ -144,6 +156,7 @@ main(int argc, char **argv)
 	     in_buf,
 	     get_word_translations_string(&table, in_buf,
 					  language_in,
+					  language_out,
 					  type, sense, form,
 					  "%s: %s; ",
 					  out_buf, BUFFER_SIZE));
