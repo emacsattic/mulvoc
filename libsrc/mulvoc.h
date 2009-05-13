@@ -1,5 +1,5 @@
 /* mulvoc.c
-   Time-stamp: <2009-05-11 21:34:05 jcgs>
+   Time-stamp: <2009-05-12 21:17:01 jcgs>
    C definitions for MuLVoc data (multi-lingual vocabulary)
 
    Copyright J. C. G. Sturdy 2009
@@ -47,6 +47,12 @@ typedef struct vocabulary_word {
   char *text;
 } vocabulary_word;
 
+typedef struct extra_column_cell {
+  struct extra_column_cell *next;
+  int extra_column_index;
+  char *value;
+} extra_column_cell;
+
 /* 
    This is the head for a chain of words of the same meaning in
    several languages.
@@ -58,6 +64,7 @@ typedef struct vocabulary_meaning {
   int part_of_speech;
   int sense_index;
   int form_index;
+  extra_column_cell *extra_columns;
 #ifdef debug
   int meaning_id;
 #endif
@@ -177,6 +184,10 @@ typedef struct vocabulary_table {
   int property_table_size;
   char **properties;
 
+  int n_extra_columns;
+  int extra_column_table_size;
+  char **extra_column_names;
+
   int hash_max;
   hash_chain_unit **hash_table;
 
@@ -223,6 +234,7 @@ extern int vocabulary_keyed_by_language(vocabulary_table *table,
 extern char *get_word_translations_string(vocabulary_table *table,
 					  char *as_text,
 					  int language_in,
+					  int language_out,
 					  int pos_in,
 					  int sense_in,
 					  int form_in,
@@ -244,6 +256,7 @@ extern int part_of_speech_index(vocabulary_table *table, char *as_text);
 extern int sense_index(vocabulary_table *table, char *as_text);
 extern int form_index(vocabulary_table *table, char *as_text);
 extern int property_index(vocabulary_table *table, char *as_text);
+extern int extra_column_index(vocabulary_table *table, char *as_text, int text_length);
 
 extern char *language_property_string(vocabulary_table *table,
 				      int language_index,
