@@ -1,3 +1,10 @@
+2009-05-12  John C G Sturdy  <john.sturdy@ul.ie>
+
+	* libsrc/mulvoc_data.c (get_word_translations_string): Added
+	filtering of output to one specified language.
+
+	* src/voclu.c (main): Added output-language option.
+
 2009-05-11  John C G Sturdy  <john.sturdy@ul.ie>
 
 	* src/voclu.c (main): Wrote vocabulary lookup program.
