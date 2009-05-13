@@ -1,5 +1,5 @@
 /* voctest.c
-   Time-stamp: <2009-05-11 21:37:04 jcgs>
+   Time-stamp: <2009-05-12 20:20:50 jcgs>
  */
 
 #include <stdio.h>
@@ -99,7 +99,7 @@ main(int argc, char **argv)
     printf("%s: %s\n",
 	   word_in,
 	   get_word_translations_string(&table, word_in,
-					-1, -1, -1, -1,
+					-1, -1, -1, -1, -1,
 					"%s: %s; ",
 					buf, BUFFER_SIZE));
   }
