@@ -1,5 +1,5 @@
 /* mulvoc.c
-   Time-stamp: <2009-05-12 21:17:01 jcgs>
+   Time-stamp: <2009-05-17 20:49:49 jcgs>
    C definitions for MuLVoc data (multi-lingual vocabulary)
 
    Copyright J. C. G. Sturdy 2009
@@ -221,6 +221,10 @@ extern int count_language_words(vocabulary_table *table,
 				int language_index,
 				int all_synonyms);
 
+extern int list_language_words(vocabulary_table *table,
+			       int language_index,
+			       char ***word_array_ptr);
+
 extern int language_indices(vocabulary_table *table,
 			    char *languages_string,
 			    int **languages);
@@ -262,6 +266,8 @@ extern char *language_property_string(vocabulary_table *table,
 				      int language_index,
 				      int property_index);
 
+extern extra_column_cell *find_extra_cell(vocabulary_meaning *meaning, int cell_type);
+
 extern hash_chain_unit *get_word_data(vocabulary_table *table,
 				      char *as_text);
 
@@ -292,6 +298,12 @@ extern void mulvoc_output_csv(FILE *output_stream,
 			      int *languages,
 			      int n_languages,
 			      int key_idx);
+
+extern void mulvoc_output_data(FILE *output_stream,
+			       vocabulary_table *table,
+			       int *languages,
+			       int n_languages,
+			       int key_idx);
 
 extern unsigned int count_meaning_words(vocabulary_table *table, vocabulary_meaning *meaning, int verbose);
 extern unsigned int check_table_data(vocabulary_table *table, int verbose);
