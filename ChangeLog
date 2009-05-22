@@ -1,3 +1,28 @@
+2009-05-17  John C G Sturdy  <john.sturdy@ul.ie>
+
+	* libsrc/mulvoc_out.c (mulvoc_output_csv): Added output of
+	non-language columns.
+
+	* libsrc/mulvoc_data.c (read_vocab_file): Completed reading of
+	non-language columns.
+
+2009-05-16  John C G Sturdy  <john.sturdy@ul.ie>
+
+	* lisp/mulvoc-read.el (mulvoc-read-data): Started new file to
+	replace the original MuLVoc elisp.  The new one reads data from
+	vocmerge's raw data output.
+
+	* libsrc/mulvoc_out.c (mulvoc_output_data): New function for
+	outputting the table in a suitable form for another program, such
+	as emacs, to read for showing translations.
+
+2009-05-15  John C G Sturdy  <john.sturdy@ul.ie>
+
+	* libsrc/mulvoc_data.c (list_language_words): Wrote vocabulary
+	listing function.
+
+	* src/voclist.c (main): Wrote vocabulary listing program.
+
 2009-05-12  John C G Sturdy  <john.sturdy@ul.ie>
 
 	* libsrc/mulvoc_data.c (get_word_translations_string): Added
