@@ -1,5 +1,5 @@
 ;;;; mulvoc.el -- multi-lingual vocabulary
-;;; Time-stamp: <2008-10-04 20:19:08 jcgs>
+;;; Time-stamp: <2009-05-21 11:33:06 jcgs>
 
 ;;  This program is free software; you can redistribute it and/or modify it
 ;;  under the terms of the GNU General Public License as published by the
@@ -16,322 +16,339 @@
 ;;  59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 ;;; Written by John C G Sturdy in October 2004
+;;; Completely re-written by John C G Sturdy in May 2009
 ;;; IPR declaration: entirely my original work
 
 (require 'thingatpt)
-(require 'csv)
-(require 'language-codes)
 
-(require 'cl)
-(require 'time-date)
+;;;;;;;;;;;;;;;;;;;
+;; Customization ;;
+;;;;;;;;;;;;;;;;;;;
 
-(require 'mulvoc-custom)
-(require 'mulvoc-data)
-(require 'mulvoc-mode)
-(require 'mulvoc-listing)	    ; should probably become autoloads
-(require 'mulvoc-interactive-edit)   ; should probably become autoloads
-(require 'mulvoc-writer)		    ; should probably become autoloads
-(require 'mulvoc-flashcards)	    ; should probably become autoloads
+(defgroup mulvoc nil
+  "MUlti-Lingual VOcabulary."
+  :prefix "mulvoc-"
+  :group 'mulvoc)
 
-(autoload 'csv-write-data-to-file "csv-writer.el"
-  ;; from http://www.cb1.com/~john/computing/emacs/lisp/data-structures/csv-writer.el
-  "Into FILE write DATA as comma separated values.
-If optional third argument is given and non-nil, it is the coding system to use.
-Optional fourth argument is the column headings to use (instead of choosing them
-automatically -- see csv-insert-data for details).
-See csv-insert-data for more detail.")
+(defcustom mulvoc-setup-hook nil
+  "*Functions to run just before setting up mulvoc data structures."
+  :type 'hook
+  :group 'mulvoc)
 
-;; todo: default parts of speech?
-;; todo: tidy up the defcustoms
+(defcustom mulvoc-post-setup-hook nil
+  "*Functions to run just after setting up mulvoc data structures."
+  :type 'hook
+  :group 'mulvoc)
 
-(defvar mulvoc-latest-word nil
-  "The latest word whose translation has been displayed.")
+(defcustom mulvoc-vocabulary-program "vocmerge"
+  "The name of the program for creating the vocabulary list.
+It is given options from `mulvoc-vocabulary-program-options'."
+  :group 'mulvoc
+  :type 'string)
 
-(mapcar 'make-variable-buffer-local '(mulvoc-cursor-active mulvoc-latest-word))
+(defcustom mulvoc-vocabulary-program-options '("-r")
+  "Options to give to `mulvoc-vocabulary-program'."
+  :group 'mulvoc
+  :type '(repeat string))
 
-(defvar mulvoc-loaded nil
-  "Whether we have yet run mulvoc-setup.")
+(defcustom mulvoc-key-language "ENG"
+  "The key language."
+  :group 'mulvoc
+  :type 'string)
 
-(defun mulvoc-count-words ()
-  "Count the words mulvoc knows."
-  (interactive)
-  (let ((count 0))
-    (mapatoms (lambda (atom)
-		(incf count))
-	      mulvoc-words)
-    (when (interactive-p)
-      (message "Mulvoc knows %d words" count))
-    count))
+(defcustom mulvoc-dictionary-files 
+  (list (expand-file-name "~/.vocabulary.csv"))
+  "The vocabulary files to read."
+  :group 'mulvoc
+  :type '(repeat 'file))
 
-(defun mulvoc-count-language-words (language)
-  "Count the words mulvoc knows in LANGUAGE."
-  (interactive (list (mulvoc-read-language "Count words in language: ")))
-  (when (symbolp language) (setq language (symbol-name language)))
-  (let ((count 0))
-    (mapatoms (lambda (atom)
-		(when (and (boundp atom)
-			   (assoc language (symbol-value atom)))
-		  (incf count)))
-	      mulvoc-words)
-    (when (interactive-p)
-      (message "Mulvoc knows %d %s words" count language))
-    count))
+(defcustom mulvoc-use-overlays nil
+  "Experimental feature.
+If nil, mulvoc does not use overlays.
+If a number, it uses that many of them, per buffer.
+If anything else, it uses any number of them."
+  :group 'mulvoc
+  :type '(choice boolean integer))
 
-(defun mulvoc-count-languages ()
-  "Count how many languages mulvoc knows."
-  (length mulvoc-languages))
+(defcustom mulvoc-use-tooltips t
+  "Whether to use tooltips, if they are available."
+  :type 'boolean
+  :group 'mulvoc)
 
-(defun mulvoc-report-counts ()
-  "Report on how many languages and words are known."
-  (interactive)
-  (let* ((words-per-language (sort (mapcar (lambda (language)
-					     (cons (car language)
-						   (mulvoc-count-language-words (car language))))
-					   mulvoc-languages)
-				   (lambda (a b) (> (cdr a) (cdr b)))))
-	 (report (concat (format "%d words in %d languages: "
-				 (mulvoc-count-words)
-				 (mulvoc-count-languages))
-			 (mapconcat (lambda (pair) (format "%s: %d" (car pair) (cdr pair)))
-				    words-per-language
-				    ", "))))
-    (message report)
-    words-per-language))
+(defcustom mulvoc-decorate-buffers t
+  "Whether to set translation properties on buffers.
+Enabling this allows tooltip display on mouseover, for example."
+  :group 'mulvoc
+  :type 'boolean)
 
-(defun mulvoc-word-as-string (word &optional further-info)
-  "Return WORD as a string."
-  ;; transitional, while I go over to making them all lists:
-  (cond
-   ((null word) nil)
-   ((stringp word)
-    (if (and further-info (get-text-property 0 'gender word))
-	(format "%s<%S>" word (get-text-property 0 'gender word))
-    word))
-   ((consp word)
-    (mapconcat 'identity word mulvoc-alias-separator))
-   (t (error "Unknown word format: %S" word))))
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; Internal variables ;;
+;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun mulvoc-word-languages (word)
-  "List the languages in which WORD is known to occur.
-The result is an alist, of the language name dotted with the
-translations from that language/word combination."
-  (symbol-value (intern-soft word mulvoc-words)))
+(defvar mulvoc-vocab-table (make-vector 1511 nil)
+  "Obarray for translations of keys.")
+
+(defvar mulvoc-phrase-ending-words (make-vector 1511 nil)
+  "Obarray for mulvoc phrase lookup.
+Each symbol is the last word of a recognized phrase, and it is bound
+to a cons of the string of the whole phrase, and the preceding words
+of the phrase, in reverse order, i.e. the word just before the ending
+word comes first in the list.")
+
+(defvar mulvoc-pre-mulvoc-abbrev-active nil
+  "Whether abbrev-mode was active before mulvoc-mode was turned on.")
+
+(make-variable-buffer-local 'mulvoc-pre-mulvoc-abbrev-active)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Displaying translations ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;###autoload
-(defun mulvoc-translate-word (word)
-  "Show (and return) translations of WORD."
-  ;; on old system
-  (interactive
-   (progn
-     (mulvoc-ensure-loaded)
-     (list
-      (completing-read "Translate word: " mulvoc-words
-		       nil t))))
-  (mulvoc-ensure-loaded)
-  (let ((ob (symbol-value (intern-soft word mulvoc-words))))
-    (if (interactive-p)
-	(if ob
-	    (message "%S" ob)
-	  (message "No translation for %S" word))
-      ob)))
+(defun mulvoc-mode (&optional arg)
+  "Minor mode to show translated words.
+With no ARG, toggle the mode.
+With ARG, switch the mode on if ARG is greater than zero."
+  (interactive "P")
+  (if (if arg
+	  (> (prefix-numeric-value arg) 0)
+	(not mulvoc-mode))
+      (progn
+	(setq mulvoc-mode t
+	      mulvoc-pre-mulvoc-abbrev-active abbrev-mode
+	      abbrev-mode t)
+	(mulvoc-setup)
+	(when mulvoc-decorate-buffers
+	  (mulvoc-decorate-words-buffer)))
+    (setq mulvoc-mode nil
+	  abbrev-mode mulvoc-pre-mulvoc-abbrev-active)))
 
-;;;###autoload
-(defun mulvoc-translate-word-to-language (word type from-language to-language)
-  "Show (and return) translation of WORD of TYPE from FROM-LANGUAGE to TO-LANGUAGE."
-  (interactive
-   (progn
-     (mulvoc-ensure-loaded)
-     (let* ((word (completing-read "Translate word: " mulvoc-words
-				   nil t))
-	    (occurring-languages (mulvoc-word-languages word))
-	    (from-language (if (null (cdr occurring-languages))
-			       (caar occurring-languages)
-			     (completing-read "From language: " occurring-languages nil t)))
-	    (type			; todo: get this
-	     )
-	    (translated-languages (cdr (assoc from-language occurring-languages)))
-	    (to-language (completing-read "To language: "
-					  translated-languages
-					  nil t)))
-       (list word type from-language to-language))))
-  (mulvoc-ensure-loaded)
-  (let* ((meaning (if from-language
-		      (cdr (assoc from-language (mulvoc-word-languages word)))
-		    (cdr (car (mulvoc-word-languages word)))))
-	 (translated-word (mulvoc-word-as-string (cdr (assoc to-language meaning)))))
-    (if (interactive-p)
-	(if translated-word
-	    (message "\"%s\" in %s is \"%s\" in %s" word from-language translated-word to-language)
-	  (message "No translation for %S" word))
-      translated-word)))
+(defcustom mulvoc-mode nil
+  "Toggle mulvoc-mode.
+Setting this variable directly does not take effect the first
+time it is used; use either \\[customize] or the function
+`mulvoc-mode'."
+  :group 'mulvoc
+  :type 'boolean
+  :set 'custom-set-minor-mode
+  :require 'mulvoc)
 
-(defun mulvoc-setup-hook-function ()
-  "Arrange for mulvoc to examine the current word after each command."
-  (add-hook 'post-command-hook 'mulvoc-command-hook-function nil t))
+(make-variable-buffer-local 'mulvoc-mode)
 
-(add-hook 'text-mode-hook 'mulvoc-setup-hook-function)
-
-(add-to-list 'auto-coding-regexp-alist
-	     (cons "content=\"text/html; charset=utf-8\""
-		   'utf-8-unix))
-
-(defun mulvoc-clear-dictionary ()
-  "Clear the dictionary.
-Meant for debugging loading of the dictionary."
-  (interactive)
-  (setq mulvoc-loaded nil
-	mulvoc-words (make-vector (length mulvoc-words) nil)
-	mulvoc-phrase-ending-words (make-vector 1511 nil)
-	mulvoc-languages nil
-	mulvoc-flashcard-meanings nil))
-
-(defvar mulvoc-parts-of-speech
-  '(("Noun") ("Verb")
-    ("Adjective") ("Adverb")
-    ("Preposition") ("Conjunction")
-    ("Phrase"))
-  "All the parts of speech currently known in the system.
-Stored as an alist, for giving to completing-read.")
-
-(defvar mulvoc-languages nil
-  "All the languages currently known in the system.
-This is an alist. The cdr of each element can be an alist of
-properties of that language, such as input method.")
-
-(defun mulvoc-part-of-speech-hook-function (language word)
-  "Hook function for setting part of speech."
-  (if (string-match "#type: \\(.+\\)$" word)
-      (cons 'type
-	    (intern (match-string 1 word)))
+(defun mulvoc-word-display-string (word)
+  "Return the display string for WORD."
+  (unless (symbolp word)
+    (setq word (intern-soft word mulvoc-vocab-table)))
+  (if word
+      (symbol-value word)
     nil))
 
-(defun mulvoc-input-method-hook-function (language word)
-  "Hook function for setting input method."
-  (message "mulvoc-input-method-hook-function(%S,%S)" language word)
-  (if (string-match "#input-method: \\(.+\\)$" language)
-      (let ((lang-def (assoc language mulvoc-languages)))
-	(rplacd lang-def
-		(cons (cons 'input-method (intern (match-string 1)))
-		      (cdr lang-def)))))
-  nil)
+(defun mulvoc-abbrev-expander ()
+  "Show translations for the word just expanded."
+  (when mulvoc-mode
+    (save-excursion
+      (let* ((start (progn (forward-word -1) (point)))
+	     (end (progn (forward-word 1) (point)))
+	     (word (buffer-substring-no-properties start end)))
+	(let ((translation (mulvoc-word-display-string word)))
+	  (when (stringp translation)
+	    (mulvoc-add-overlay start end translation)
+	    ;; (mulvoc-scrolling-display translation)
+	    (when (and mulvoc-decorate-buffers
+		       mulvoc-decorated-buffer)
+	      (mulvoc-decorate-word start end translation))
+	    (mulvoc-display "%s" translation)))
+	;; 	(let ((mwob (intern-soft word mulvoc-phrase-ending-words)))
+	;; 	  (when mwob
+	;; 	    (let* ((phrase-value (symbol-value mwob))
+	;; 		   (match (mulvoc-preceding-words-match
+	;; 			   start
+	;; 			   (cdr phrase-value))))
+	;; 	      (when match
+	;; 		(let ((translation (mulvoc-word-display-string
+	;; 				    (intern (car phrase-value)
+	;; 					    mulvoc-words))))
+	;; 		  (when (stringp translation)
+	;; 		    (mulvoc-add-overlay match end translation)
+	;; 		    (mulvoc-scrolling-display translation)
+	;; 		    (when mulvoc-decorated-buffer
+	;; 		      (mulvoc-decorate-word match end translation))
+	;; 		    (mulvoc-display "%s" translation)))))))
+	))))
 
-(add-hook 'mulvoc-comment-hook 'mulvoc-part-of-speech-hook-function)
-(add-hook 'mulvoc-comment-hook 'mulvoc-input-method-hook-function)
+(defun mulvoc-display (format &rest args)
+  "Using FORMAT, display &rest ARGS."
+  (if (and (boundp 'tooltip-mode)
+	   tooltip-mode
+	   mulvoc-use-tooltips)
+      (tooltip-show (apply 'format format args))
+    (apply 'message args)))
 
-(defconst mulvoc-gender-pattern "\\(.+\\) *(\\([mfncx][0-9]\\))"
-  "Pattern for recognizing that a word is given with its gender.")
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Marking words using overlays ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defconst mulvoc-gender-strings
-  '(("m" . masculine)
-    ("f" . feminine)
-    ("n" . neuter)
-    ("c" . common)			; for Dutch, Swedish
-    ("x" . mixed)			; for Polish
-    )
-  "Alist of gender strings to genders.")
+(defvar mulvoc-overlays nil
+  "Translation overlays.")
 
-(defun mulvoc-gender-from-string (string)
-  "Convert STRING to a gender."
-  (cdr (assoc (substring string 0 1) mulvoc-gender-strings)))
+(make-variable-buffer-local 'mulvoc-overlays)
 
-;;;###autoload
-(defun mulvoc-ensure-loaded (&optional originals-only)
-  "Ensure that mulvoc has loaded its dictionaries."
-  (let ((mulvoc-load-while-idle nil))
-    (unless mulvoc-loaded
-      (mulvoc-setup originals-only))))
+(defvar mulvoc-overlay-before-change-text nil
+  "Some text we keep around to look for whether there is a real change or just a property change.")
 
-(defvar mulvoc-file-word-array nil
-  "Where to collect this file's definitions. Rebound in reading code.")
+(defun mulvoc-overlay-modification-function (overlay after begin end &optional length)
+  "Function to remove overlays when the word changes."
+  (if after
+      (unless (equal mulvoc-overlay-before-change-text
+		     (buffer-substring-no-properties begin end))
+	(if nil
+	    (mulvoc-remove-overlays)
+	  (delete-overlay overlay)))
+    (setq mulvoc-overlay-before-change-text (buffer-substring-no-properties begin end))))
 
-(defvar mulvoc-file-language-array nil
-  "Where to collect this file's languages. Rebound in reading code.")
+(defun mulvoc-add-overlay (begin end translation)
+  "Add a translation overlay to BEGIN...END, with TRANSLATION."
+  (when mulvoc-use-overlays
+    (let ((new-overlay
+	   (if (and (integerp mulvoc-use-overlays)
+		    (>= (length mulvoc-overlays) mulvoc-use-overlays))
+	       (let* ((new-end-pair (nthcdr (- mulvoc-use-overlays 2) mulvoc-overlays))
+		      (recyled-element (cadr new-end-pair))
+		      (surplus (cddr new-end-pair)))
+		 (rplacd new-end-pair nil)
+		 (mapcar 'delete-overlay surplus)
+		 (move-overlay recyled-element begin end)
+		 recyled-element)
+	     (make-overlay begin end))))
+      ;; (put-text-property 0 (length translation) 'face (cons 'italic t) translation)
+      (put-text-property 0 (length translation) 'display '(height .9) translation)
+      (overlay-put new-overlay 'evaporate t)
+      (overlay-put new-overlay 'after-string (format " {%s}" translation))
+      (overlay-put new-overlay 'modification-hooks '(mulvoc-overlay-modification-function))
+      (setq mulvoc-overlays (cons new-overlay
+				 mulvoc-overlays)))))
 
-(defvar mulvoc-words-from-files nil
-  "Alist of file truenames to obarrays of words defined in that file.")
+(defun mulvoc-remove-overlays ()
+  "Remove all translation overlays in the current buffer."
+  (interactive)
+  (mapcar 'delete-overlay mulvoc-overlays)
+  (setq mulvoc-overlays nil))
 
-(defvar mulvoc-languages-from-files nil
-  "Alist of file truenames to obarrays of languages defined in that file.")
+(defadvice recenter (before remove-vocab first () activate)
+  (mulvoc-remove-overlays))
 
-(defun mulvoc-read-directory (dict-directory)
-  "Read the vocabulary files in DICT-DIRECTORY."
-  (interactive "DRead vocabulary from files in directory: ")
-  (mapcar 'mulvoc-read-csv-file (directory-files dict-directory t mulvoc-dictionaries-pattern t)))
+(defadvice fill-paragraph (before remove-vocab first () activate)
+  (mulvoc-remove-overlays))
 
-(defconst mulvoc-origin-string "#ORIGIN"
-  "String we use to mark origin data.")
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ``Decorating'' text with translation properties ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun mulvoc-add-csv-marker (cells)
-  "Return CELLS with a marker consed onto the front."
-  ;; (message "In mulvoc-add-csv-marker %S" cells)
-  (let ((start-marker (make-marker)))
-    (set-marker start-marker (line-beginning-position) (current-buffer))
-    ;; (message "Made origin marker %S" start-marker)
-    (cons (cons mulvoc-origin-string
-		start-marker)
-	  cells)))
+(defun mulvoc-point-show-decoration (a b)
+  ;; todo: not quite right yet
+  (message "%s" (get-text-property a 'help-echo)))
 
-(defvar mulvoc-file-columns nil
-  "The column headings for this file.")
+(defun mulvoc-show-decoration (a b)
+  ;; todo: not quite right yet
+  (mulvoc-display "%s" (get-text-property a 'help-echo)))
 
-(make-variable-buffer-local 'mulvoc-file-columns)
+(defvar mulvoc-decorated-buffer nil
+  "Whether this buffer is decorated.")
 
-(defun mulvoc-read-csv-file (dict-file &optional fast)
-  "Read the vocabulary from comma separated values file DICT-FILE.
-With optional FAST, do not merge with existing vocabulary.
-Use FAST only when you know there will be no overlaps,
-e.g. on the first file."
-  (interactive "fRead vocabulary from csv file: ")
-  (unless (interactive-p) (message "Reading vocabulary from file %s" dict-file))
-  (save-window-excursion
-    (let* ((csv-unquoted-entry-regexp  "\\(^\\|,\\)[\t ]*\\([^,\n]*\\)[\t ]*\\(,\\|,?$\\)")
-	   (csv-quoted-entry-regexp "\\(^\\|,\\)[\t ]*\"\\(\\([^\"]\\|\n\\|\\\\\"\\)*\\)\"[\t ]*\\(,\\|,?$\\)")
-	   (was-visited (get-file-buffer dict-file))
-	   (truename (file-truename dict-file))
-	   (word-array-pair (assoc truename mulvoc-words-from-files))
-	   (mulvoc-file-word-array (cdr word-array-pair))
-	   (language-array-pair (assoc truename mulvoc-languages-from-files))
-	   (mulvoc-file-language-array (cdr language-array-pair))
-	   )
-      (unless word-array-pair
-	(setq mulvoc-file-word-array (make-vector 1511 nil)
-	      word-array-pair (cons truename mulvoc-file-word-array)
-	      mulvoc-words-from-files (cons word-array-pair mulvoc-words-from-files)))
-      (unless language-array-pair
-	(setq mulvoc-file-language-array (make-vector 1511 nil)
-	      language-array-pair (cons truename mulvoc-file-language-array)
-	      mulvoc-languages-from-files (cons language-array-pair mulvoc-languages-from-files)))
-      (find-file dict-file)
-      (let* ((csv-read-line-hooks '(mulvoc-add-csv-marker))
-	     (dict (csv-parse-buffer))
-	     (rows (length dict))
-	     (rows-per-percent (if (> rows 100)
-				   (/ (length dict) 100)
-				 1))
-	     (i 0))
-	(if mulvoc-debug
-	    (message "Reading %s and adding %S" dict-file dict)
-	  (message "Adding data from %s" dict-file))
-	(message "%d rows, %d per percent" (length dict) rows-per-percent)
-	(setq mulvoc-file-columns (mapcar 'car (car dict)))
-	(dolist (meaning dict)
-	  (setq i (1+ i))
-	  (when (zerop (% i rows-per-percent))
-	    (message "Adding %s: %d%%" dict-file (/ (* i 100) (length dict))))
-	  (mulvoc-define-meaning meaning fast)))
-      (unless (or mulvoc-keep-dictionary-buffers
-		  was-visited)
-	(kill-buffer nil)))))
+(make-variable-buffer-local 'mulvoc-decorated-buffer)
 
-(defvar mulvoc-loading-backgrounded nil
-  "Whether mulvoc is loading data as a background activity, which
-is done using an idle timer.")
+(defun mulvoc-decorate-word-1 (begin end translation)
+  "Decorate the word between BEGIN and END with TRANSLATION.
+This is meant as an internal funtion for `mulvoc-decorate-word'
+and `mulvoc-decorate-words-region', which handle modification
+state, etc."
+  (put-text-property begin end 'help-echo translation)
+  (put-text-property begin end 'point-entered 'mulvoc-point-show-decoration))
 
-(defvar mulvoc-in-setup nil
-  "Whether we are currently in mulvoc-setup.
-Used to prevent recursion, in the case of mulvoc-setup (or
-mulvoc-ensure-loaded) being called from a mode hook function that gets
-used in the csv files that are read during mulvoc-setup.")
+(defun mulvoc-decorate-word (begin end translation)
+  "Decorate the word between BEGIN and END with TRANSLATION."
+  (let ((inhibit-read-only t)
+	(modified (buffer-modified-p)))
+    (mulvoc-decorate-word-1 begin end translation)
+    ;; (mulvoc-add-overlay begin end translation) ; don't want to do this twice!
+    (set-buffer-modified-p modified)))
+
+(defun mulvoc-decorate-words-region (begin end)
+  "Mark words between BEGIN and END with properties that display translations.
+Translations are displayed when point moves into the word, or the mouse goes over it."
+  (interactive "r")
+  (let ((inhibit-read-only t)
+	(modified (buffer-modified-p)))
+    (save-excursion
+      (goto-char begin)
+      (while (re-search-forward "\\b\\w+\\b" end t)
+	(let ((translation (mulvoc-word-display-string
+			    (match-string-no-properties 0))))
+	  (when (stringp translation)
+	    (mulvoc-decorate-word-1 (match-beginning 0) (match-end 0)
+				    translation)))))
+    (set-buffer-modified-p modified)))
+
+(defun mulvoc-decorate-words-buffer ()
+  "Mark translations in the current buffer."
+  (interactive)
+  (setq mulvoc-decorated-buffer t)
+  ;; todo: set the buffer up so that any words added also get marked
+  (mulvoc-decorate-words-region (point-min) (point-max)))
+
+;;;;;;;;;;;;;;;;;;
+;; Reading data ;;
+;;;;;;;;;;;;;;;;;;
+
+(defun mulvoc-parse-buffer (buffer)
+  "Parse the vocabulary data in BUFFER."
+  (set-buffer buffer)
+  (goto-char (point-min))
+  (while (re-search-forward "^\\([^:]+\\): \\(.+\\)$" (point-max) t)
+    (let* ((key (match-string 1))
+	   (translations (match-string 2)))
+      (if (string-match " " key)
+	  (let ((words (split-string key)))
+	    (message "Got phrase %S" words)
+	    )
+	(let ((old (mulvoc-word-display-string key)))
+	  (when old (setq translations (concat old "; " translations)))
+	  ;; (message "Defining %s to %s" key translations)
+	  (define-abbrev global-abbrev-table
+	    key t
+	    (symbol-function 'mulvoc-abbrev-expander)
+	    0 t)
+	  (let ((symbol (intern key mulvoc-vocab-table)))
+	    (set symbol translations)))))))
+
+(defun mulvoc-read-data (key-language files)
+  "Read vocabulary data, ordered by KEY-LANGUAGE, from FILES.
+KEY-LANGUAGE is a language code in the form used in the header
+lines of FILES.
+FILES are CSV files according to MuLVoc's standard, and are
+processed by the program named in `mulvoc-vocabulary-program' into the
+format read by `mulvoc-parse-buffer'."
+  (let* ((vocab-buffer (get-buffer-create " *vocabulary*")))
+    (set-buffer vocab-buffer)
+    (erase-buffer)
+    (apply 'call-process
+	   mulvoc-vocabulary-program
+	   nil				; infile
+	   vocab-buffer			; buffer
+	   nil				; display
+	   (append mulvoc-vocabulary-program-options files))
+    (mulvoc-parse-buffer vocab-buffer)))
+
+(defun mulvoc-read-file (file)
+  "Read vocabulary data from FILE.
+FILE must be in the format output by the `vocmerge' program,
+and not a CSV file."
+  (interactive "fRead vocabulary file: ")
+  (save-excursion
+    (mulvoc-parse-buffer (find-file-noselect file))))
+
+(defvar mulvoc-loaded nil
+  "Whether MuLVoc has been loaded.")
 
 ;;;###autoload
 (defun mulvoc-setup (&optional force)
@@ -339,42 +356,13 @@ used in the csv files that are read during mulvoc-setup.")
 With optional argument FORCE, ignore the cached vocabulary file, and
 get the original data."
   (interactive "P")
-  (unless mulvoc-in-setup
-    (let ((mulvoc-in-setup t)
-	  (setup-started (current-time)))
-      (run-hooks 'mulvoc-setup-hook)
-      (if (and (not force)
-	       (stringp mulvoc-cache-file)
-	       (file-exists-p mulvoc-cache-file))
-	  (if (and mulvoc-load-while-idle
-		   (fboundp 'load-lisp-while-idle))
-	      (progn
-		(load-lisp-while-idle mulvoc-cache-file)
-		(setq mulvoc-loading-backgrounded t))
-	    (load-file mulvoc-cache-file))
-	(message "Mulvoc loading dictionaries matching %s from %s"
-		 mulvoc-dictionaries-pattern
-		 (mapconcat 'identity mulvoc-dictionaries-directories ", "))
-	(mulvoc-clear-dictionary)
-	(dolist (dict-directory mulvoc-dictionaries-directories)
-	  (message "Setting coding system for files in %s to be utf-8-unix" dict-directory)
-	  (add-to-list 'file-coding-system-alist
-		       (cons (concat dict-directory
-				     "/.+\\.csv")
-			     'utf-8-unix)))
-	(mapcar 'mulvoc-read-directory mulvoc-dictionaries-directories)
-	(when (and (stringp mulvoc-cache-file)
-		   (file-directory-p (file-name-directory mulvoc-cache-file)))
-	  (mulvoc-dump-all-meanings mulvoc-cache-file)))
-      (run-hooks 'mulvoc-post-setup-hook)
-      (let* ((setup-ended (current-time))
-	     (setup-duration (subtract-time setup-ended setup-started)))
-	(message "Reading vocabulary took %S seconds... got %d words in %d languages"
-		 setup-duration
-		 (mulvoc-count-words) (mulvoc-count-languages)))))
-  (setq mulvoc-loaded t
-	mulvoc-abbrev-setup-done nil	; in case it got triggered recursively while loading vocab data
-	))
+  (unless mulvoc-loaded
+    (run-hooks 'mulvoc-setup-hook)
+    (mulvoc-read-data mulvoc-key-language mulvoc-dictionary-files)
+    (unless (assq 'mulvoc-mode minor-mode-alist)
+      (push (list 'mulvoc-mode " MuLVoc") minor-mode-alist))
+    (setq mulvoc-loaded t)
+    (run-hooks 'mulvoc-post-setup-hook)))
 
 (provide 'mulvoc)
 
