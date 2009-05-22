@@ -1,52 +1,59 @@
-"#TYPE","#SENSE","NUMBER","ENG","GLI","NRR","SWD","GER","DUT","CZC","PQL","RUS","FIN","BSQ","PRT","PRV","ITA","KHK","Romaji","Pinyin"
-"#LANGUAGENAME",,,"English","Irish","Norwegian","Swedish","German","Dutch","Czech","Polish","Russian","Finnish","Basque","Portuguese","Provencal","Italian","Mongolian","Romaji","Pinyin"
-"#INPUT-METHODS",,,"british","irish","norwegian","swedish","german","dutch","Czech","polish","russian","finnish","basque","portuguese",,,,"romaji","tone-pinyin-as-such"
-"cardinal",,0,"zero",,,,,,"nula",,,,"huts",,,,,,
-"cardinal",,1,"one","aon","en/ett","ett","ein","een","jedna","jeden",,"yksi","bat","um",,,,"ichi","yi1"
-"cardinal",,2,"two","dha","to","två","zwei",,"dva","dwa",,"kaksi","bi","dois",,,,"ni","er4"
-"cardinal",,3,"three","trí","tre","tre","drei",,"tři","trzy",,"kolme","hiru","três",,,,"san","san1"
-"cardinal",,4,"four","ceathair","fire","fyra","vier",,"čtyři","cztery",,"neljä","lau","quatro",,,,"shi","si4"
-"cardinal",,5,"five","cúig","fem","fem",,,"pĕt","pięc",,"viisi","bost","cinco",,,,"go","wu3"
-"cardinal",,6,"six","sé","seks","sex",,,"šest","sześć",,"kuusi","sei","seis",,,,"roku","liu4"
-"cardinal",,7,"seven","seacht","sju","sju",,,"sedm","siedem",,"seitsemän","zazpi","sete",,,,"shichi","qi1"
-"cardinal",,8,"eight","ocht","åtte","åtta",,,"osm","osiem",,"kahdeksän","zortzi","oito",,,,"hachi","ba1"
-"cardinal",,9,"nine","naoi","ni","nio",,,"devět","dziewięć",,"yhdeksän","bederatzi","nove",,,,"kyuu","jiu3"
-"cardinal",,10,"ten","deich","ti","tio",,,"deset","dziesięć",,"kymmenen","hamar","dez",,,,"juu","shi2"
-"cardinal",,11,"eleven","aon deig","elleve","elva",,,"jedenáct",,,"yksitoista",,"onze",,,,"juuichi","shi2-yi1"
-"cardinal",,12,"twelve","dha dheig","tolv","tolv",,,"dvanáct",,,"kaksitoista",,"doze",,,,"juuni","shi2-er4"
-"cardinal",,13,"thirteen",,,,,,,,,,,,,,,,
-"cardinal",,14,"fourteen",,,,,,,,,,,,,,,,
-"cardinal",,15,"fifteen",,,,,,,,,,,,,,,,
-"cardinal",,16,"sixteen",,,,,,,,,,,,,,,,
-"cardinal",,17,"seventeen",,,,,,,,,,,,,,,,
-"cardinal",,18,"eighteen",,,,,,,,,,,,,,,,
-"cardinal",,19,"nineteen",,,,,,,,,,,,,,,,
-"cardinal",,20,"twenty",,,,,,,,,,,,,,,,
-"cardinal",,21,"twenty-one",,,,,,,,,,,,,,,,
-"cardinal",,22,"twenty-two",,,,,,,,,,,,,,,,
-"cardinal",,30,"thirty",,,,,,,,,,,,,,,,
-"cardinal",,40,"forty",,,,,,,,,,,,,,,,
-"cardinal",,50,"fifty",,,,,,,,,,,,,,,,
-"cardinal",,60,"sixty",,,,,,,,,,,,,,,,
-"cardinal",,70,"seventy",,,,,,,,,,,,,,,,
-"cardinal",,80,"eighty",,,,,,,,,,,,,,,,
-"cardinal",,90,"ninety",,,,,,,,,,,,,,,,
-"cardinal",,99,"ninety-nine",,,,,,,,,,,,,,,,
-"cardinal",,100,"one hundred",,,,,,,,,,,,,,,,
-"cardinal",,101,"one hundred and one",,,,,,,,,,,,,,,,
-"cardinal",,110,"one hundred and ten",,,,,,,,,,,,,,,,
-"cardinal",,111,"one hundred and eleven",,,,,,,,,,,,,,,,
-"cardinal",,200,"two hundred",,,,,,,,,,,,,,,,
-"cardinal",,999,"nine hundred and ninety-nine",,,,,,,,,,,,,,,,
-"cardinal",,1000,"one thousand",,,,,,,,,,,,,,,,
-"cardinal",,1001,"one thousand and one",,,,,,,,,,,,,,,,
-"cardinal",,1010,"one thousand and ten",,,,,,,,,,,,,,,,
-"cardinal",,1011,"one thousand and eleven",,,,,,,,,,,,,,,,
-"cardinal",,1100,"one thousand one hundred",,,,,,,,,,,,,,,,
-"cardinal",,1101,"one thousand one hundred and one",,,,,,,,,,,,,,,,
-"cardinal",,1110,"one thousand one hundred and ten",,,,,,,,,,,,,,,,
-"cardinal",,1111,"one thousand one hundred and eleven",,,,,,,,,,,,,,,,
-"cardinal",,2000,"two thousand",,,,,,,,,,,,,,,,
-"cardinal",,10000,"ten thousand",,,,,,,,,,,,,,,,
-"cardinal",,100000,"one hundred thousand",,,,,,,,,,,,,,,,
-"cardinal",,1000000,"one million",,,,,,,,,,,,,,,,
+"#TYPE","#SENSE","NUMBER","ENG","GLI","NRR","SWD","GER","DUT","CZC","PQL","RUS","FIN","BSQ","PRT","PRV","ITA","RUM","KHK","Romaji","Pinyin"
+"#LANGUAGENAME","#languagename",,"English","Irish","Norwegian","Swedish","German","Dutch","Czech","Polish","Russian","Finnish","Basque","Portuguese","Provencal","Italian","Romanian","Mongolian","Romaji","Pinyin"
+"#input-methods","#input-methods",,"british","irish","norwegian","swedish","german","dutch","czech","polish","russian","finnish","basque","portuguese",,,,,"romaji","tone-pinyin-as-such"
+"cardinal",,0,"zero",,,,,,"nula",,,,"huts",,,"zero","zero",,,
+"cardinal",,1,"one","aon","en/ett","ett","ein","een","jedna","jeden",,"yksi","bat","um(m)/uma(f)",,"uno","unu(m), una(f)",,"ichi","yi1"
+"cardinal",,2,"two","dha","to","två","zwei",,"dva","dwa",,"kaksi","bi","dois(m)/duas(f)",,"due","doi(m), două",,"ni","er4"
+"cardinal",,3,"three","trí","tre","tre","drei",,"tři","trzy",,"kolme","hiru","três",,"tre","trei",,"san","san1"
+"cardinal",,4,"four","ceathair","fire","fyra","vier",,"čtyři","cztery",,"neljä","lau","quatro",,"quattro","patru",,"shi","si4"
+"cardinal",,5,"five","cúig","fem","fem",,,"pĕt","pięc",,"viisi","bost","cinco",,"cinque","cinci",,"go","wu3"
+"cardinal",,6,"six","sé","seks","sex",,,"šest","sześć",,"kuusi","sei","seis",,"sei","şase",,"roku","liu4"
+"cardinal",,7,"seven","seacht","sju","sju",,,"sedm","siedem",,"seitsemän","zazpi","sete",,"sette","şapte",,"shichi","qi1"
+"cardinal",,8,"eight","ocht","åtte","åtta",,,"osm","osiem",,"kahdeksän","zortzi","oito",,"otto","opt",,"hachi","ba1"
+"cardinal",,9,"nine","naoi","ni","nio",,,"devět","dziewięć",,"yhdeksän","bederatzi","nove",,"nove","nouă",,"kyuu","jiu3"
+"cardinal",,10,"ten","deich","ti","tio",,,"deset","dziesięć",,"kymmenen","hamar","dez",,"diece","zece",,"juu","shi2"
+"cardinal",,11,"eleven","aon deig","elleve","elva",,,"jedenáct",,,"yksitoista","hamaika","onze",,"undici","unsprezece",,"juuichi","shi2-yi1"
+"cardinal",,12,"twelve","dha dheig","tolv","tolv",,,"dvanáct",,,"kaksitoista","hamabi","doze",,"dodici","doisprezece(m), douăsprezece",,"juuni","shi2-er4"
+"cardinal",,13,"thirteen",,,,,,,,,,"hamahiru","treze",,"tredici","treisprezece",,,
+"cardinal",,14,"fourteen",,,,,,,,,,"hamalau","catorze",,"quattordici","paisprezece",,,
+"cardinal",,15,"fifteen",,,,,,,,,,"hamabost","quinze",,"quindici","cincisprezece",,,
+"cardinal",,16,"sixteen",,,,,,,,,,"hamasei","dezasseis",,"sedici","şaisprezece",,,
+"cardinal",,17,"seventeen",,,,,,,,,,"hamazazpi","dezassete",,"diciassette","şaptesprezece",,,
+"cardinal",,18,"eighteen",,,,,,,,,,"hemezortzi, hamazortzi","dezoito",,"diciotto","optsprezece",,,
+"cardinal",,19,"nineteen",,,,,,,,,,"hemeretzi","dezanove",,"diciannove","nouăsprezece",,,
+"cardinal",,20,"twenty",,,,,,,,,,"hogei","vinte",,"venti","douăzeci",,,
+"cardinal",,21,"twenty-one",,,,,,,,,,,,,"ventiuno","douăzeci şi unu",,,
+"cardinal",,22,"twenty-two",,,,,,,,,,,,,"ventidue","douăzeci şi doi",,,
+"cardinal",,30,"thirty",,,,,,,,,,,"trinta",,"trenta","treizeci",,,
+"cardinal",,40,"forty",,,,,,,,,,"berrogei","quarenta",,"quaranta","patruzeci",,,
+"cardinal",,50,"fifty",,,,,,,,,,,"cinquenta",,"cinquanta","cincizeci",,,
+"cardinal",,60,"sixty",,,,,,,,,,"hirurogei",,,"sessanta","şaiszeci",,,
+"cardinal",,70,"seventy",,,,,,,,,,,,,"settanta","şaptezeci",,,
+"cardinal",,80,"eighty",,,,,,,,,,"laurogei",,,"ottanta","optzeci",,,
+"cardinal",,90,"ninety",,,,,,,,,,,,,"novanta","nouăzeci",,,
+"cardinal",,99,"ninety-nine",,,,,,,,,,,,,,,,,
+"cardinal",,100,"one hundred",,,,,,,,,,"ehun",,,"cento","o sută",,,
+"cardinal",,101,"one hundred and one",,,,,,,,,,,,,,,,,
+"cardinal",,110,"one hundred and ten",,,,,,,,,,,,,,,,,
+"cardinal",,111,"one hundred and eleven",,,,,,,,,,,,,,,,,
+"cardinal",,200,"two hundred",,,,,,,,,,"berrehun",,,"duecento",,,,
+"cardinal",,300,"three hundred",,,,,,,,,,"hirurehun",,,,,,,
+"cardinal",,400,"four hundred",,,,,,,,,,"laurehun",,,"quattrocento",,,,
+"cardinal",,500,"five hundred",,,,,,,,,,"bostehun",,,"cinquecento",,,,
+"cardinal",,600,"six hundred",,,,,,,,,,"seirehun",,,"seicento",,,,
+"cardinal",,700,"seven hundred",,,,,,,,,,"zazpirehun",,,"settecento",,,,
+"cardinal",,800,"eight hundred",,,,,,,,,,"zortzirehun",,,,,,,
+"cardinal",,900,"nine hundred",,,,,,,,,,"bederatzirehun",,,"novecento",,,,
+"cardinal",,999,"nine hundred and ninety-nine",,,,,,,,,,,,,,,,,
+"cardinal",,1000,"one thousand",,,,,,,,,,"mila",,,"mille",,,,
+"cardinal",,1001,"one thousand and one",,,,,,,,,,,,,,,,,
+"cardinal",,1010,"one thousand and ten",,,,,,,,,,,,,,,,,
+"cardinal",,1011,"one thousand and eleven",,,,,,,,,,,,,,,,,
+"cardinal",,1100,"one thousand one hundred",,,,,,,,,,,,,,,,,
+"cardinal",,1101,"one thousand one hundred and one",,,,,,,,,,,,,,,,,
+"cardinal",,1110,"one thousand one hundred and ten",,,,,,,,,,,,,,,,,
+"cardinal",,1111,"one thousand one hundred and eleven",,,,,,,,,,,,,,,,,
+"cardinal",,2000,"two thousand",,,,,,,,,,,,,,,,,
+"cardinal",,10000,"ten thousand",,,,,,,,,,,,,,,,,
+"cardinal",,100000,"one hundred thousand",,,,,,,,,,,,,,,,,
+"cardinal",,1000000,"one million",,,,,,,,,,,,,,,,,
