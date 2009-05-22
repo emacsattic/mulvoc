@@ -1,5 +1,6 @@
 /* vocmerge.c
-   Time-stamp: <2009-05-10 18:22:23 jcgs>
+   Time-stamp: <2009-05-15 22:05:43 jcgs>
+   Vocabulary file merge program in the MuLVoc suite.
  */
 
 #include <stdio.h>
@@ -12,7 +13,7 @@
 
 #define BUFFER_SIZE (256*256)
 
-static const char *short_options = "a:b:cHhl:o:ps:t:v";
+static const char *short_options = "a:b:cHhl:o:prs:t:v";
 
 static struct option long_options[] = {
   {"attributes", required_argument, 0, 'a'},
@@ -22,8 +23,9 @@ static struct option long_options[] = {
   {"html", no_argument, 0, 'h'},
   {"html-page", no_argument, 0, 'p'},
   {"languages", required_argument, 0, 'l'},
-  {"sort", required_argument, 0, 's'},
   {"output", required_argument, 0, 'o'},
+  {"raw", no_argument, 0, 'r'},
+  {"sort", required_argument, 0, 's'},
   {"title", required_argument, 0, 't'},
   {"verbose", no_argument, 0, 'v'},
   {0, 0, 0, 0}
@@ -55,6 +57,7 @@ main(int argc, char **argv)
 {
   int html = 0;
   int page = 0;
+  int raw = 0;
   char *title = "Vocabulary";
   char *attributes = NULL;
   char *blank = NULL;
@@ -95,6 +98,7 @@ main(int argc, char **argv)
       }
       break;
     case 'p': page = html = 1; break;
+    case 'r': raw = 1; break;
     case 's': language_code = optarg; break;
     case 't': page = html = 1; title = optarg; break;
     case 'v': verbose = 1; break;
@@ -117,7 +121,12 @@ main(int argc, char **argv)
     int *languages = NULL;
     int n_languages = language_indices(&table, languages_string, &languages);
 
-    if (html) {
+    if (raw) {
+      mulvoc_output_data(output_stream,
+			 &table,
+			 languages, n_languages,
+			 key_idx);
+    } else if (html) {
       if (page) {
 	fprintf(output_stream,
 		"<html>\n<head>\n<title>%s</title>\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"></head>\n<body>\n",
