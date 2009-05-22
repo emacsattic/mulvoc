@@ -1,5 +1,5 @@
 /* mulvoc_data.c
-   Time-stamp: <2009-05-12 21:17:37 jcgs>
+   Time-stamp: <2009-05-17 20:54:24 jcgs>
    Read and manage MuLVoc data (multi-lingual vocabulary)
 
    Copyright J. C. G. Sturdy 2009
@@ -245,7 +245,7 @@ show_forms(FILE *stream,
 
 void
 show_properties(FILE *stream,
-	   vocabulary_table *table)
+		vocabulary_table *table)
 {
   int i;
   int n = table->n_properties;
@@ -253,6 +253,19 @@ show_properties(FILE *stream,
 
   for (i = 0; i < n; i++) {
     fprintf(stream, "% 3d: %s\n", i, properties[i]);
+  }
+}
+
+void
+show_extra_columns(FILE *stream,
+		   vocabulary_table *table)
+{
+  int i;
+  int n = table->n_extra_columns;
+  char **names = table->extra_column_names;
+
+  for (i = 0; i < n; i++) {
+    fprintf(stream, "% 3d: %s\n", i, names[i]);
   }
 }
 
@@ -274,12 +287,15 @@ show_table_metadata(FILE *stream,
   show_forms(stream, table);
   fprintf(stream, "Properties:\n");
   show_properties(stream, table);
+  fprintf(stream, "Extra columns:\n");
+  show_extra_columns(stream, table);
 }
 
 void
 show_meaning(FILE *stream, vocabulary_table *table, vocabulary_meaning *meaning, char *label)
 {
   vocabulary_word *word;
+  extra_column_cell *x;
   fprintf(stream, label);
   if (meaning == NULL) {
     fprintf(stream, "<empty meaning>");
@@ -292,6 +308,9 @@ show_meaning(FILE *stream, vocabulary_table *table, vocabulary_meaning *meaning,
 	 word=word->next) {
       fprintf(stream, "%s: %s; ", table->languages[word->language]->code, word->text);
     }
+  }
+  for (x = meaning->extra_columns; x != NULL; x = x->next) {
+    fprintf(stream, "; {%s=%s}", table->extra_column_names[x->extra_column_index], x->value);
   }
   fprintf(stream, "\n");
 }
@@ -609,6 +628,18 @@ extra_column_index(vocabulary_table *table,
   return n;
 }
 
+extra_column_cell *
+find_extra_cell(vocabulary_meaning *meaning, int cell_type)
+{
+  extra_column_cell *x;
+  for (x = meaning->extra_columns; x != NULL; x = x->next) {
+    if (x->extra_column_index == cell_type) {
+      return x;
+    }
+  }
+  return NULL;
+}
+
 char *
 language_property_string(vocabulary_table *table,
 			 int language_index,
@@ -865,9 +896,6 @@ read_vocab_file(const char *filename,
       language_columns[i] = NULL;
       extra_columns[i] = -1;
     }
-#if 0
-    fprintf(stderr, "allocated %d language columns\n", n_columns);
-#endif
   }
 
   /* Look for the special (non-language) columns. */
@@ -913,22 +941,6 @@ read_vocab_file(const char *filename,
     }
   }
 
-#if 0
-  /* print out the per-column language headings we have found: */
-  {
-    int i;
-    for (i = 0; i < n_columns; i++) {
-      vocabulary_language *lang = language_columns[i];
-
-      if (lang) {
-	printf("column %d: %s(%d)\n", i, &(lang->code[0]), lang->language_number);
-      } else {
-	printf("column %d: not a language column\n", i);
-      }
-    }
-  }
-#endif
-
   /* Now the actual data reader. */
   {
     int column = 0;
@@ -969,7 +981,8 @@ read_vocab_file(const char *filename,
 		if (c == '#') {
 		  if (column == 0) {
 		    int pragma_length = cell_length;
-		    if (strncmp(p, "#languagename", pragma_length) == 0) {
+		    if ((strncmp(p, "#languagename", pragma_length) == 0) ||
+			(strncmp(p, "#LANGUAGENAME", pragma_length) == 0)){
 		      doing_language_names = 1;
 		    } else {
 		      int i;
@@ -1244,11 +1257,15 @@ read_vocab_file(const char *filename,
 	    } else {
 	      int column_extra_id = extra_columns[column];
 	      if (column_extra_id >= 0) {
+		char *next_comma = strchr(p, ',');
+		int cell_length = next_comma - p;
 		extra_column_cell *cell = (extra_column_cell*)mulvoc_malloc(table, sizeof(extra_column_cell));
 		cell->extra_column_index = column_extra_id;
-		cell->value = NULL; /* todo: fix this */
+		cell->value = (char*)mulvoc_malloc(table, cell_length+1);
+		strncpy(cell->value, p, cell_length);
+		cell->value[cell_length] = '\0';
 #if 0
-		printf("got unquoted %.12s in column %d\n", p, column);
+		fprintf(stderr, "got unquoted %s in column %d\n", cell->value, column);
 #endif
 		if (row_meaning == NULL) {
 		  row_meaning = (vocabulary_meaning*)mulvoc_malloc(table,
@@ -1265,6 +1282,7 @@ read_vocab_file(const char *filename,
 		}
 		cell->next = row_meaning->extra_columns;
 		row_meaning->extra_columns = cell;
+		p += cell_length - 1;
 	      }
 	    }
 	  }
@@ -1390,9 +1408,6 @@ count_language_words(vocabulary_table *table,
     vocabulary_word *w;
     // show_meaning(stderr, table, m, "?\t");
     for (w = m->words; w != NULL; w = w->next) {
-#if 0
-      fprintf(stderr, "\t\t%s %d\n", w->text, w->language);
-#endif
       if (w->language == language_index) {
 	n++;
 	if (!all_synonyms) {
@@ -1403,6 +1418,42 @@ count_language_words(vocabulary_table *table,
   }
 
   return n;
+}
+
+/* 
+   Construct an array of all the words in a given language.
+   Homographs appear as many times as they have meanings.  The third
+   argument points to a location to fill in with the address of the
+   resulting array.  This array has pointers to the strings of the
+   internal data of the table.  The function result is the size of the
+   array.
+ */
+int
+list_language_words(vocabulary_table *table,
+		    int language_index,
+		    char ***word_array_ptr)
+{
+  int n_words = count_language_words(table, language_index, 1);
+  char **word_array = malloc(n_words * sizeof(char*));
+  int fill_index = 0;
+  vocabulary_meaning *m;
+
+  for (m = table->meanings; m != NULL; m = m->next) {
+    vocabulary_word *w;
+    for (w = m->words; w != NULL; w = w->next) {
+      if (w->language == language_index) {
+	word_array[fill_index++] = w->text;
+      }
+    }
+  }
+
+  if (fill_index != n_words) {
+    fprintf(stderr, "Internal problem: wrong number of words!! Was %d, should have been %d\n", fill_index, n_words);
+  }
+
+  *word_array_ptr = word_array;
+
+  return fill_index;
 }
 
 int
@@ -1458,6 +1509,14 @@ vocabulary_keyed_by_language(vocabulary_table *table,
 
 #define LANG_SPEC_SEPARATOR ','
 
+/* List the indices of the languages whose codes are given in languages_string.
+
+   The second argument is a string of language codes, separated by
+   LANG_SPEC_SEPARATOR, which is normally a comma.
+
+   The third argument is a pointer to the location to fill in with the
+   address of the indices array, which is newly allocated.
+*/
 int
 language_indices(vocabulary_table *table,
 		 char *languages_string,
@@ -1475,7 +1534,7 @@ language_indices(vocabulary_table *table,
 	n++;
       }
     }
-    l = (int*)mulvoc_malloc(table, n * sizeof(int));
+    l = (int*)malloc(n * sizeof(int));
     *languages = l;
     s = languages_string;
     for (i = 0; i < n; i++) {
@@ -1489,7 +1548,7 @@ language_indices(vocabulary_table *table,
   } else {
     /* use all the languages */
     int n = table->n_languages;
-    int *l = (int*)mulvoc_malloc(table, n * sizeof(int));
+    int *l = (int*)malloc(n * sizeof(int));
     int i;
     *languages = l;
     for (i = 0; i < n; i++) {
