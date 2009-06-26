@@ -1,5 +1,5 @@
 /* mulvoc_data.c
-   Time-stamp: <2009-05-17 20:54:24 jcgs>
+   Time-stamp: <2009-06-24 23:55:09 jcgs>
    Read and manage MuLVoc data (multi-lingual vocabulary)
 
    Copyright J. C. G. Sturdy 2009
@@ -104,12 +104,24 @@ mulvoc_initialize_table(vocabulary_table *table,
 
   table->n_meanings = 0;
   table->meanings = NULL;
+
+  table->files_used = NULL;
+
 #ifdef debug
   table->next_meaning_id = 0;
 #endif
 
   table->n_keyed = 0;
   table->keyed = NULL;
+
+  table->location_format = "%s:%d";
+}
+
+void
+mulvoc_destroy_table(vocabulary_table *table)
+{
+  /* todo: complete this */
+  free(table);
 }
 
 int
@@ -270,6 +282,20 @@ show_extra_columns(FILE *stream,
 }
 
 void
+show_locations(FILE *stream, vocabulary_location *l)
+{
+  /* #define LOCATION_FORMAT " [%s:%d]" */
+#define LOCATION_FORMAT " %2$d,"
+
+  for (; l != NULL; l = l->next) {
+    fprintf(stream, LOCATION_FORMAT,
+	    (l->file) ? (l->file) : "<none>",
+	    l->line);
+  }
+  fputc('\n', stream);
+}
+
+void
 show_table_metadata(FILE *stream,
 		    vocabulary_table *table)
 {
@@ -391,62 +417,124 @@ count_meaning_words(vocabulary_table *table,
 		    int verbose)
 {
   unsigned int count = 0;
-  
+
   vocabulary_word *word;
   if (meaning == NULL) {
+    return count;
   } else {
     for (word = meaning->words;
 	 word != NULL;
 	 word=word->next) {
-      if (verbose) { fprintf(stderr, "            %lx: %s --> %lx\n", (unsigned long)word, word->text, (unsigned long)(word->next)); }
+      if (verbose) { fprintf(stderr, "            %#lx: %s --> %#lx\n", (unsigned long)word, word->text, (unsigned long)(word->next)); }
       count++;
     }
   }
   return count;
 }
 
-unsigned int
+int
+check_meaning_data(vocabulary_table *table,
+		   vocabulary_meaning *meaning,
+		   int *chars_in_words_ptr,
+		   int verbose) 
+{
+  vocabulary_word *word;
+  vocabulary_location  *location;
+  int words_in_meanings = count_meaning_words(table, meaning, 0 & verbose);
+  int dummy = 0;
+  return 0;			/* todo: remove, then remove calls */
+  if ((table == NULL) || (meaning == NULL)) {
+    return 0;
+  }
+  if (chars_in_words_ptr == NULL) {
+    chars_in_words_ptr = &dummy;
+  }
+#ifdef freddo
+  fprintf(stderr, "          form=%#lx",(unsigned long)form);
+  fprintf(stderr, " meaning=%#lx", (unsigned long)meaning);
+#endif
+  if (meaning != NULL) {
+#ifdef freddo
+    fprintf(stderr, " words=%#lx", (unsigned long)(meaning->words));
+#endif
+    for (word = meaning->words;
+	 word != NULL;
+	 word = word->next) {
+      if (verbose ) { 
+	fprintf(stderr, "            %#lx: %s --> %#lx\n", (unsigned long)word, word->text, (unsigned long)(word->next));
+      }
+      /* this forces access to the textual data */
+      *chars_in_words_ptr += strlen(word->text);
+      if ((word->language < 0) || (word->language > table->n_languages)) {
+	return -1;
+      }
+    }
+    for (location = meaning->whence;
+	 location != NULL;
+	 location = location->next) {
+      if (verbose ) { fprintf(stderr, "            location=%#lx %#lx %d --> %#lx\n", (unsigned long)location,  (unsigned long)(location->file), location->line, (unsigned long)(location->next)); }
+      /* again, force access to string data */
+      if (location->file != NULL) {
+	*chars_in_words_ptr += strlen(location->file);
+      }
+    }
+  }
+#ifdef freddo
+  fprintf(stderr, "\n");
+#endif
+
+  return words_in_meanings;
+}
+
+int
 check_table_data(vocabulary_table *table,
+		 int *char_count_ptr,
 		 int verbose)
 {
   int words_in_meanings = 0;
+  int chars_in_words = 0;
   int n = table->hash_max;
   int i;
-
-  if (verbose) { fprintf(stderr, "checking table at %lx\n", (unsigned long)table); }
+  return 0;			/* todo: remove, then remove calls */
+  if (verbose) { fprintf(stderr, "\nchecking table at %#lx\n", (unsigned long)table); }
 
   for (i = 0; i < n; i++) {
     hash_chain_unit *chain_link;
     for (chain_link = table->hash_table[i];
 	 chain_link != NULL;
 	 chain_link = chain_link->next) {
-      if (verbose) { fprintf(stderr, "  chain_link[%d]=%lx \"%s\"\n", i, (unsigned long)chain_link, chain_link->text); }
+      if (verbose) { fprintf(stderr, "  chain_link[%d]=%#lx \"%s\"\n", i, (unsigned long)chain_link, chain_link->text); }
       language_chain_unit *language;
       for (language = chain_link->languages;
 	   language != NULL;
 	   language = language->next) {
 	part_of_speech_chain_unit *part_of_speech;
-	if (verbose) { fprintf(stderr, "    language=%lx\n", (unsigned long)language); }
+	if (verbose) { fprintf(stderr, "    language=%#lx\n", (unsigned long)language); }
 	for (part_of_speech = language->parts_of_speech;
 	     part_of_speech != NULL;
 	     part_of_speech = part_of_speech->next) {
 	  sense_chain_unit *sense;
-	  if (verbose) { fprintf(stderr, "      part_of_speech=%lx\n", (unsigned long)part_of_speech); }
+	  if (verbose) { fprintf(stderr, "      part_of_speech=%#lx\n", (unsigned long)part_of_speech); }
 	  for (sense = part_of_speech->senses;
 	       sense != NULL;
 	       sense=sense->next) {
 	    form_chain_unit *form;
-	    if (verbose) { fprintf(stderr, "        sense=%lx\n", (unsigned long)sense); }
+	    if (verbose) { fprintf(stderr, "        sense=%#lx\n", (unsigned long)sense); }
 	    for (form = sense->forms;
 		 form != NULL;
 		 form = form->next) {
-	      if (verbose ) { fprintf(stderr, "          form=%lx\n", (unsigned long)form); }
-	      words_in_meanings += count_meaning_words(table, form->meaning, verbose);
+	      vocabulary_meaning *meaning = form->meaning;
+	      if (verbose) { fprintf(stderr, "          form=%#lx\n", (unsigned long)form); }
+	      words_in_meanings +=
+		check_meaning_data(table, meaning, &chars_in_words, verbose);
 	    }
 	  }
 	}
       }
     }
+  }
+  if (char_count_ptr != NULL) {
+    *char_count_ptr = chars_in_words;
   }
   return words_in_meanings;
 }
@@ -776,8 +864,10 @@ get_word_language_type_sense_form_data(vocabulary_table *table,
 				       int form_index)
 {
   form_chain_unit *form;
-
+  // fprintf(stderr, "Looking for form %d data in sense data at %#lx\n", form_index, word_language_type_sense_data);
+  check_table_data(table, NULL, 0);
   if (word_language_type_sense_data == NULL) {
+    // fprintf(stderr, "No sense data\n");
     return NULL;
   }
 
@@ -785,15 +875,20 @@ get_word_language_type_sense_form_data(vocabulary_table *table,
        form != NULL;
        form = form->next) {
     if (form->form_index == form_index) {
+      // fprintf(stderr, "Found existing at %#lx\n", form);
       return form;
     }
   }
-
+  check_table_data(table, NULL, 0);
   form = (form_chain_unit*)mulvoc_malloc(table, sizeof(form_chain_unit));
+  // fprintf(stderr, "Allocated new at %#lx\n", form);
   form->form_index = form_index;
   form->meaning = NULL;
   form->next = word_language_type_sense_data->forms;
-  word_language_type_sense_data->forms = form;
+  check_table_data(table, NULL, 0);
+  // fprintf(stderr, "Setting form pointer in sense %#lx to point to new form at %#lx\n", word_language_type_sense_data, form);
+  word_language_type_sense_data->forms = form; /* this is where it goes wrong */
+  check_table_data(table, NULL, 0);
   return form;
 }
 
@@ -808,6 +903,16 @@ find_language_word_in_meaning(vocabulary_meaning *meaning, int lang_index)
     }
   }
   return NULL;
+}
+
+void
+add_line_info(vocabulary_table *table, vocabulary_meaning *meaning, char *filename, int line_number)
+{
+  vocabulary_location *this_line = mulvoc_malloc(table, sizeof(vocabulary_location));
+  this_line->next = meaning->whence;
+  this_line->file = filename;
+  this_line->line = line_number;
+  meaning->whence = this_line;
 }
 
 #define MAX_TYPE 256
@@ -829,9 +934,24 @@ read_vocab_file(const char *filename,
   vocabulary_language** language_columns = NULL;
   int *extra_columns = NULL;
   char c, *p;
+  vocabulary_location *this_file = NULL;
+  char *saved_filename = NULL;
+  int line_number = 0;
 
   if (stat(filename, &stat_buf) != 0) {
     exit(errno);
+  }
+
+  check_table_data(table, NULL, 0);
+
+  if (table->tracing & TRACE_ORIGINS) {
+    this_file = mulvoc_malloc(table, sizeof(vocabulary_location*));
+    saved_filename = mulvoc_malloc(table, 1+strlen(filename));
+    strcpy(saved_filename, filename);
+    this_file->file = saved_filename;
+    this_file->line = 0;
+    this_file->next = table->files_used;
+    table->files_used = this_file;
   }
 
   vocab_file_size = stat_buf.st_size;
@@ -941,6 +1061,10 @@ read_vocab_file(const char *filename,
     }
   }
 
+  line_number = 2;
+
+  check_table_data(table, NULL, 0);
+
   /* Now the actual data reader. */
   {
     int column = 0;
@@ -966,8 +1090,12 @@ read_vocab_file(const char *filename,
       row_sense_index = -1;
       row_form_index = -1;
 
+      check_table_data(table, NULL, 0);
+
       /* Loop to read the cells of the row */
       while ((c = *++p) != '\n') {
+	check_table_data(table, NULL, 0);
+	check_meaning_data(table, row_meaning, NULL, 0);
 	if (c == '"') {
 	  in_quotes = !in_quotes;
 	} else {
@@ -976,7 +1104,8 @@ read_vocab_file(const char *filename,
 	      if (prev_c == '"') {
 		char *cell_end = strchr(p, '"');
 		int cell_length = cell_end - p;
-
+		check_table_data(table, NULL, 0);
+		check_meaning_data(table, row_meaning, NULL, 0);
 		/* Handle comments, pragmata etc */
 		if (c == '#') {
 		  if (column == 0) {
@@ -1005,12 +1134,15 @@ read_vocab_file(const char *filename,
 		    }
 		    fprintf(stderr, "got comment %.*s in column %d\n", cell_length, p, column);
 		  }
-
+		  check_meaning_data(table, row_meaning, NULL, 0);
 		  /*
 		    A normal data cell (neither pragma nor comment).
 		    Look to see whether it is one of the special columns.
 		  */
 		} else {
+		  // fprintf(stderr, "handling cell text '%.*s'\n", cell_length, p);
+		  check_table_data(table, NULL, 0);
+		  check_meaning_data(table, row_meaning, NULL, 0);
 		  if (column == type_column) {
 		    int length = (cell_length > MAX_TYPE) ? MAX_TYPE : cell_length;
 		    strncpy(row_type, p, length);
@@ -1029,13 +1161,19 @@ read_vocab_file(const char *filename,
 		    /* Not in a special column, this could well be a word -- unless we are in a special row */
 		    vocabulary_language *word_lang = language_columns[column];
 		    char *lang_name = (word_lang != NULL) ? (&((word_lang->code)[0])) : "?";
+		    check_meaning_data(table, row_meaning, NULL, 0);
 		    if (doing_language_names) {
 		      if (language_columns[column] != NULL) {
+			unsigned int name_length = cell_length;
 			char *name = &(language_columns[column]->name[0]);
-			strncpy(name, p, cell_length);
+			if (name_length > MAX_NAME) {
+			  name_length = MAX_NAME;
+			}
+			strncpy(name, p, name_length);
 			name[cell_length] = '\0';
 		      }
 		    } else if (current_pragma_index >= 0) {
+		      /* We are in a special row, other than the language names */
 		      if (language_columns[column] != NULL) {
 			language_property *prop;
 			int got_it = 0;
@@ -1047,7 +1185,7 @@ read_vocab_file(const char *filename,
 			    break;
 			  }
 			}
-			
+
 			if (!got_it) {
 			  language_property *new_prop = (language_property*)mulvoc_malloc(table, sizeof(language_property));
 			  char *new_val = (char*)mulvoc_malloc(table, 1+cell_length);
@@ -1059,6 +1197,7 @@ read_vocab_file(const char *filename,
 			  language_columns[column]->properties = new_prop;
 			}
 		      }
+		      check_meaning_data(table, row_meaning, NULL, 0);
 		    } else {
 		      /* We are probably in a normal cell of a normal row */
 		      hash_chain_unit* word_data;
@@ -1066,11 +1205,14 @@ read_vocab_file(const char *filename,
 		      part_of_speech_chain_unit *word_type_data;
 		      sense_chain_unit *word_type_sense_data;
 		      form_chain_unit *word_type_sense_form_data;
+		      check_meaning_data(table, row_meaning, NULL, 0);
 		      if (word_lang == NULL) {
 		      } else {
 			char *q = p;
 			int more_synonyms = 1;
 			/* Iterate over comma/slash separated synonyms within the cell */
+			check_table_data(table, NULL, 0);
+			check_meaning_data(table, row_meaning, NULL, 0);
 			while (more_synonyms && (q < cell_end)) {
 			  char *next_comma = strchr(q, ',');
 			  char *next_slash = strchr(q, '/');
@@ -1089,7 +1231,8 @@ read_vocab_file(const char *filename,
 			    q++;
 			  }
 			  word_length = word_end - q;
-
+			  check_table_data(table, NULL, 0);
+			  check_meaning_data(table, row_meaning, NULL, 0);
 			  {
 			    char *new_word_text = (char*)mulvoc_malloc(table, word_length + 1);
 			    /* Now we really have got a word, so store it */
@@ -1097,24 +1240,32 @@ read_vocab_file(const char *filename,
 			    vocabulary_meaning *existing_meaning;
 			    int link_word = 0;
 
+			    check_table_data(table, NULL, 0);
+
 			    strncpy(new_word_text, q, word_length);
 			    new_word_text[word_length] = '\0';
 
 			    if (table->tracing & TRACE_READ) {
 			      fprintf(stderr, "got word %s in column %d which is %s(%d):%s:%s in %s\n", new_word_text, column, row_type, row_type_index, row_form, row_sense, lang_name);
 			    }
+			    
+			    check_table_data(table, NULL, 0);
 
 			    word_data = get_word_data(table,
 						      new_word_text);
+			    check_table_data(table, NULL, 0);
 			    word_language_data = get_word_language_data(table,
 									word_data,
 									word_lang->language_number);
+			    check_table_data(table, NULL, 0);
 			    word_type_data = get_word_language_type_data(table,
 									 word_language_data,
 									 row_type_index);
+			    check_table_data(table, NULL, 0);
 			    word_type_sense_data = get_word_language_type_sense_data(table,
 										     word_type_data,
 										     row_sense_index);
+			    check_table_data(table, NULL, 0);
 			    word_type_sense_form_data = get_word_language_type_sense_form_data(table,
 											       word_type_sense_data,
 											       row_form_index);
@@ -1122,9 +1273,12 @@ read_vocab_file(const char *filename,
 			    /* Get the existing meaning, if there is one */
 			    existing_meaning = word_type_sense_form_data->meaning;
 
+			    check_table_data(table, NULL, 0);
+
 			    if ((row_meaning != NULL) && (existing_meaning == row_meaning)) {
 			      /* nothing needs to be done */
 			    } else {
+			      check_meaning_data(table, row_meaning, NULL, 0);
 			      if (row_meaning == NULL) {
 				/* There are no previous occupied word cells
 				   on this row */
@@ -1134,6 +1288,7 @@ read_vocab_file(const char *filename,
 				     one, so just tag on to the old one */
 				  link_word = 1;
 				  row_meaning = existing_meaning;
+				  check_meaning_data(table, row_meaning, NULL, 0);
 				} else {
 				  /* We are on the first occupied word cell
 				     of this row, and there is no
@@ -1151,15 +1306,30 @@ read_vocab_file(const char *filename,
 				  row_meaning->part_of_speech = row_type_index;
 				  row_meaning->sense_index = row_sense_index;
 				  row_meaning->form_index = row_form_index;
+				  row_meaning->whence = NULL;
+				  check_meaning_data(table, row_meaning, NULL, 0);
+				  check_table_data(table, NULL, 0);
+#if 1
+				  if (saved_filename) {
+				    add_line_info(table, row_meaning, saved_filename, line_number);
+				    check_meaning_data(table, row_meaning, NULL, 0);
+				    check_table_data(table, NULL, 0);
+				  } else {
+				    row_meaning->whence = NULL;
+				    check_meaning_data(table, row_meaning, NULL, 0);
+				    check_table_data(table, NULL, 0);
+				  }
+#endif
+				  check_meaning_data(table, row_meaning, NULL, 0);
 				}
 			      } else {
+				check_meaning_data(table, row_meaning, NULL, 0);
 				/* We have already started to build a row,
 				   and must now merge it with the existing
 				   row that we've just found */
 				if ((existing_meaning != NULL)
 				    && (existing_meaning->words !=NULL)
-				    && (existing_meaning != row_meaning)
-				    ) {
+				    && (existing_meaning != row_meaning)) {
 				  /* We have a new meaning and an old one, so must merge them */
 				  vocabulary_word *scanning_word;
 				  if (table->tracing & TRACE_MERGE) {
@@ -1169,25 +1339,25 @@ read_vocab_file(const char *filename,
 				    show_meanings(stderr, table, "meanings before merging\n", "%d meanings (before merging)\n", "\t");
 				  }
 				  link_word = 1;
-
+				  check_meaning_data(table, row_meaning, NULL, 0);
 				  /* find end of existing_meaning words */
 				  for (scanning_word = existing_meaning->words;
 				       scanning_word->next != NULL;
 				       scanning_word = scanning_word->next) {
 				  }
-				  scanning_word->next = row_meaning->words;
+				  check_meaning_data(table, row_meaning, NULL, 0);				  scanning_word->next = row_meaning->words;
 				  if (table->tracing & TRACE_MERGE) {
 				    show_meaning(stderr, table, existing_meaning, "    combined meaning: ");
 				    show_meanings(stderr, table, "meanings after merging\n", "%d meanings (after merging)\n", "\t");
 				  }
-
+				  check_meaning_data(table, row_meaning, NULL, 0);
 				  /* Remove any pointers to the unmerged meaning: */
 				  for (scanning_word = row_meaning->words;
 				       scanning_word != NULL;
 				       scanning_word = scanning_word->next) {
 				    int word_language = scanning_word->language;
-				    
-				    form_chain_unit *fcu = 
+
+				    form_chain_unit *fcu =
 				      get_word_language_type_sense_form_data
 				      (table,
 				       get_word_language_type_sense_data
@@ -1206,12 +1376,61 @@ read_vocab_file(const char *filename,
 				      fcu->meaning = existing_meaning;
 				    }
 				  }
+				  check_meaning_data(table, row_meaning, NULL, 0);
+				  /* If remembering locations, merge the locations list */
+				  if ((saved_filename != NULL) /* used as flag for whether we are saving locations */
+				      && (row_meaning->whence != NULL)) {
+				    vocabulary_location *scanning_location;
+				    vocabulary_location *common_tail = NULL;
+				    vocabulary_location *this_row_last_location = NULL;
 
+				    /* Loop to leave scanning_location on the last link of row_meaning->whence;
+				       we also look for a common tail, which if not handled specially will make
+				       a circular data structure when we merge the location lists.
+				    */
+				    for (scanning_location = row_meaning->whence;
+					 scanning_location != NULL;
+					 scanning_location = scanning_location->next) {
+				      vocabulary_location *other_location;
+				      vocabulary_location *previous_other = NULL;
+
+				      if (scanning_location->next == NULL) {
+					this_row_last_location = scanning_location;
+				      }
+
+				      for (other_location = existing_meaning->whence;
+					   other_location != NULL;
+					   other_location = other_location->next) {
+					if (other_location == scanning_location) {
+					  common_tail = scanning_location;
+					  /* Either cut the "other" chain before the common part,
+					     or, if there is no "before", at the start of the list:
+					  */
+					  if (previous_other) {
+					    previous_other->next = NULL;
+					  } else {
+					    existing_meaning->whence = NULL;
+					  }
+					}
+					previous_other = other_location;
+				      }
+				    }
+
+				    if (this_row_last_location != NULL) {
+				      this_row_last_location->next = existing_meaning->whence;
+				    }
+				    existing_meaning->whence = row_meaning->whence;
+				    show_meaning(stderr, table, existing_meaning, "Merging location data:\n");
+				    show_locations(stderr, existing_meaning->whence);
+				    check_table_data(table, NULL, 1);
+				  }
+				  check_meaning_data(table, row_meaning, NULL, 0);
 				  /* Now switch to using the combined meaning from now on (and fixup old references): */
 				  {
 				    vocabulary_meaning *m;
 				    int i = 0;
 				    for (m = table->meanings; m != NULL; m = m->next) {
+				      /* fixup non-head pointers */
 				      if (m->next == row_meaning) {
 					m->next = m->next->next;
 				      }
@@ -1219,27 +1438,40 @@ read_vocab_file(const char *filename,
 				    }
 				  }
 				  table->n_meanings--;
-
-				  mulvoc_free(table, row_meaning); /* todo: these are still being referred to, because our fixup system only fixes up references in the current row, whereas we may be joining a previous row which knows nothing of these early sixties sitcoms of which we speak */
-
+				  check_meaning_data(table, row_meaning, NULL, 0);
+				  mulvoc_free(table, row_meaning);
+				  check_meaning_data(table, row_meaning, NULL, 0);
+				  /* fixup head pointer */
 				  if (table->meanings == row_meaning) {
 				    table->meanings = existing_meaning;
 				  }
+				  check_meaning_data(table, row_meaning, NULL, 0);
 				  row_meaning = existing_meaning;
+				  check_meaning_data(table, row_meaning, NULL, 0);
 				}
 			      }
+			      check_meaning_data(table, row_meaning, NULL, 0);
 			    }
+			    check_table_data(table, NULL, 0);
+
+			    /* todo: this check_meaning_data below is where it finds the problem
+			       And what it's objecting to is the file origin data
+			    */
+			    check_meaning_data(table, row_meaning, NULL, 0);
 
 			    word_type_sense_form_data->meaning = row_meaning;
-			    
+
 			    if (!link_word) {
 			      /* Now add the word to the meaning */
+			      check_table_data(table, NULL, 0);
+
 			      word_in_chain = (vocabulary_word*)mulvoc_malloc(table, sizeof(vocabulary_word));
 			      word_in_chain->text = new_word_text;
 			      word_in_chain->language = word_lang->language_number;
 
 			      word_in_chain->next = row_meaning->words;
 			      row_meaning->words = word_in_chain;
+			      check_table_data(table, NULL, 0);
 			    }
 			  }
 			  q = word_end+1;
@@ -1249,9 +1481,12 @@ read_vocab_file(const char *filename,
 		  }
 		}
 		p += cell_length - 1;
+		check_table_data(table, NULL, 0);
 	      }
+	      check_table_data(table, NULL, 0);
 	    }
 	  } else {
+	    check_table_data(table, NULL, 0);
 	    if (c == ',') {
 	      column++;
 	    } else {
@@ -1260,13 +1495,16 @@ read_vocab_file(const char *filename,
 		char *next_comma = strchr(p, ',');
 		int cell_length = next_comma - p;
 		extra_column_cell *cell = (extra_column_cell*)mulvoc_malloc(table, sizeof(extra_column_cell));
+		check_table_data(table, NULL, 0);
+		check_meaning_data(table, row_meaning, NULL, 0);
 		cell->extra_column_index = column_extra_id;
 		cell->value = (char*)mulvoc_malloc(table, cell_length+1);
 		strncpy(cell->value, p, cell_length);
 		cell->value[cell_length] = '\0';
-#if 0
+#if 1
 		fprintf(stderr, "got unquoted %s in column %d\n", cell->value, column);
 #endif
+		check_meaning_data(table, row_meaning, NULL, 0);
 		if (row_meaning == NULL) {
 		  row_meaning = (vocabulary_meaning*)mulvoc_malloc(table,
 								   sizeof(vocabulary_meaning));
@@ -1279,16 +1517,25 @@ read_vocab_file(const char *filename,
 		  row_meaning->part_of_speech = row_type_index;
 		  row_meaning->sense_index = row_sense_index;
 		  row_meaning->form_index = row_form_index;
+		  row_meaning->whence = NULL;
+		  check_meaning_data(table, row_meaning, NULL, 0);
+		  add_line_info(table, row_meaning, saved_filename, line_number);
+		  check_meaning_data(table, row_meaning, NULL, 0);
 		}
 		cell->next = row_meaning->extra_columns;
 		row_meaning->extra_columns = cell;
 		p += cell_length - 1;
+		check_table_data(table, NULL, 0);
+		check_meaning_data(table, row_meaning, NULL, 0);
 	      }
 	    }
 	  }
 	}
+	check_meaning_data(table, row_meaning, NULL, 0);
+	check_table_data(table, NULL, 0);
 	prev_c = c;
       }
+      line_number++;
       current_pragma_name[0] = '\0';
       current_pragma_index = -1;
 
@@ -1323,6 +1570,9 @@ read_vocab_file(const char *filename,
     fprintf(stderr, "Finished reading file \"%s\"\n", filename);
   }
 
+  if (saved_filename) {
+    this_file->line = line_number;
+  }
   close(vocab_fd);
 }
 
@@ -1420,7 +1670,7 @@ count_language_words(vocabulary_table *table,
   return n;
 }
 
-/* 
+/*
    Construct an array of all the words in a given language.
    Homographs appear as many times as they have meanings.  The third
    argument points to a location to fill in with the address of the
