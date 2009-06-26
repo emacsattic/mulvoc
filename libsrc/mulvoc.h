@@ -1,5 +1,5 @@
 /* mulvoc.c
-   Time-stamp: <2009-05-17 20:49:49 jcgs>
+   Time-stamp: <2009-06-24 09:23:30 jcgs>
    C definitions for MuLVoc data (multi-lingual vocabulary)
 
    Copyright J. C. G. Sturdy 2009
@@ -53,6 +53,12 @@ typedef struct extra_column_cell {
   char *value;
 } extra_column_cell;
 
+typedef struct vocabulary_location {
+  struct vocabulary_location *next;
+  char *file;
+  int line;
+} vocabulary_location;
+
 /* 
    This is the head for a chain of words of the same meaning in
    several languages.
@@ -65,6 +71,7 @@ typedef struct vocabulary_meaning {
   int sense_index;
   int form_index;
   extra_column_cell *extra_columns;
+  vocabulary_location *whence;
 #ifdef debug
   int meaning_id;
 #endif
@@ -146,6 +153,7 @@ typedef struct sorted_vocab_word {
 #define TRACE_PRAGMATA 4
 #define TRACE_COMMENTS 8
 #define TRACE_MERGE 16
+#define TRACE_ORIGINS 32	/* not an immediate output, but saves extra data */
 
 /*
   The `table' is our top-level structure.
@@ -168,31 +176,51 @@ typedef struct vocabulary_table {
   int languages_table_size;	/* allocated size */
   vocabulary_language **languages;
 
-  int n_parts_of_speech;
+  int n_parts_of_speech;	  /* used size */
   int parts_of_speech_table_size; /* allocated size */
   char **parts_of_speech;
 
-  int n_senses;
+  int n_senses;			/* used size */
   int senses_table_size;	/* allocated size */
   char **senses;
 
-  int n_forms;
+  int n_forms;			/* used size */
   int forms_table_size;		/* allocated size */
   char **forms;
 
-  int n_properties;
-  int property_table_size;
+  /* `properties' are attached to language descriptions.  They come
+     from the header rows of the file.
+  */
+  int n_properties;		/* used size */
+  int property_table_size;	/* allocated size */
   char **properties;
 
-  int n_extra_columns;
-  int extra_column_table_size;
+  int n_extra_columns;		/* used size */
+  int extra_column_table_size;	/* allocated size */
   char **extra_column_names;
 
+  /* This is the actual vocabulary data, organized as a hash table
+     from word texts.
+  */
   int hash_max;
   hash_chain_unit **hash_table;
 
+  /* This is the actual vocabulary data, organized as `meanings' (I
+     think that professionals in this field may call them something
+     like `terms').
+  */
   int n_meanings;
   vocabulary_meaning *meanings;
+
+  /* The files we got the data from (not that it necessarily came from
+     files).  This is the same format of data as the corresponding
+     information for individual meanings, but here we use the `line
+     number' to give the number of lines in the file.  The
+     vocabulary_location data in the meanings uses the filename
+     strings in this list for its filenames; this list is here
+     primarily to manage the allocation of those names. */
+  vocabulary_location *files_used;
+
 #ifdef debug
   int next_meaning_id;
 #endif
@@ -203,6 +231,8 @@ typedef struct vocabulary_table {
   int tracing;
   unsigned int bytes_read;
   unsigned int bytes_allocated;
+
+  char *location_format;
 } vocabulary_table;
 
 
@@ -210,6 +240,8 @@ extern void mulvoc_initialize_table(vocabulary_table *table,
 				    int hash_size,
 				    int misc_table_size,
 				    int tracing_flags);
+
+extern void mulvoc_destroy_table(vocabulary_table *table);
 
 extern int read_vocab_file(const char *filename,
 			   vocabulary_table *table);
@@ -305,7 +337,16 @@ extern void mulvoc_output_data(FILE *output_stream,
 			       int n_languages,
 			       int key_idx);
 
+extern void mulvoc_output_delimited(FILE *output_stream,
+				    vocabulary_table *table,
+				    int *languages,
+				    int n_languages,
+				    int key_idx,
+				    char *row_start,
+				    char *between_cells,
+				    char *row_end);
+
 extern unsigned int count_meaning_words(vocabulary_table *table, vocabulary_meaning *meaning, int verbose);
-extern unsigned int check_table_data(vocabulary_table *table, int verbose);
+extern int check_table_data(vocabulary_table *table, int *char_count_ptr, int verbose);
 
 /* mulvoc.h ends here */
