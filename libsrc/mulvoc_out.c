@@ -1,5 +1,5 @@
 /* mulvoc_data.c
-   Time-stamp: <2009-05-17 20:58:11 jcgs>
+   Time-stamp: <2009-06-24 09:23:30 jcgs>
    Output MuLVoc data (multi-lingual vocabulary) as CSV or HTML
 
    Copyright J. C. G. Sturdy 2009
@@ -54,6 +54,9 @@ mulvoc_output_html(FILE *output_stream,
   for (i_lang = 0; i_lang < n_languages; i_lang++) {
     fprintf(output_stream, "<td>%s</td>", table->languages[languages[i_lang]]->code);
   }
+  if (table->tracing & TRACE_ORIGINS) {
+    fprintf(output_stream, "<td>Locations</td>");
+  }
   fprintf(output_stream, "</tr>\n  <tr><td></td><td></td><td></td>");
   for (i_lang = 0; i_lang < n_languages; i_lang++) {
     fprintf(output_stream, "<td>%s</td>", table->languages[languages[i_lang]]->name);
@@ -78,8 +81,8 @@ mulvoc_output_html(FILE *output_stream,
 						      i_lang,
 						      color_index);
 	char *bgcolor_string = language_property_string(table,
-						      i_lang,
-						      bgcolor_index);
+							i_lang,
+							bgcolor_index);
 	fprintf(output_stream, "    <td lang=\"%s\"",
 		table->languages[word->language]->code);
 	if (color_string) {
@@ -97,6 +100,19 @@ mulvoc_output_html(FILE *output_stream,
 	  fprintf(output_stream, "    <td></td>\n");
 	}
       }
+    }
+    if (table->tracing & TRACE_ORIGINS) {
+      vocabulary_location *origins;
+      fprintf(output_stream, "<td class=\"locations\">");
+      for (origins = meaning->whence;
+	   origins != NULL;
+	   origins = origins->next) {
+	fprintf(output_stream, "%s:%d", origins->file, origins->line);
+	if (origins->next != NULL) {
+	  fputs(", ", output_stream);
+	}
+      }
+      fprintf(output_stream, "</td>");
     }
     fprintf(output_stream, "  </tr>\n");
   }
@@ -217,6 +233,19 @@ mulvoc_output_csv(FILE *output_stream,
 	putc(',', output_stream);
       }
     }
+    if (table->tracing & TRACE_ORIGINS) {
+      vocabulary_location *origins;
+      putc('"', output_stream);
+      for (origins = meaning->whence;
+	   origins != NULL;
+	   origins = origins->next) {
+	fprintf(output_stream, "%s:%d", origins->file, origins->line);
+	if (origins->next != NULL) {
+	  fputs(", ", output_stream);
+	}
+      }
+      putc('"', output_stream);
+    }
     putc('\n', output_stream);
   }
 }
@@ -262,7 +291,60 @@ mulvoc_output_data(FILE *output_stream,
 	}
       }
     }
+    if (table->tracing & TRACE_ORIGINS) {
+      vocabulary_location *origins;
+      for (origins = meaning->whence;
+	   origins != NULL;
+	   origins = origins->next) {
+	fprintf(output_stream, "%#lx-->", (unsigned long)origins);
+	fprintf(output_stream, "%#lx-->", (unsigned long)origins->file);
+	fflush(output_stream);
+	fprintf(output_stream, table->location_format, origins->file, origins->line);
+	if (origins->next != NULL) {
+	  fputs(", ", output_stream);
+	}
+      }
+    }
     putc('\n', output_stream);
+  }
+}
+
+void
+mulvoc_output_delimited(FILE *output_stream,
+			vocabulary_table *table,
+			int *languages,
+			int n_languages,
+			int key_idx,
+			char *row_start,
+			char *between_cells,
+			char *row_end)
+{
+  int rows = vocabulary_keyed_by_language(table, key_idx, 0, 1);
+  int i_row, i_lang;
+
+  for (i_row = 0; i_row < rows; i_row++) {
+    vocabulary_meaning *meaning = table->keyed[i_row].meaning;
+    int pos_index = meaning->part_of_speech;
+    int sense_index = meaning->sense_index;
+    int form_index = meaning->form_index;
+
+    if (row_start != NULL) {
+      fputs(row_start, output_stream);
+    }
+
+    for (i_lang = 0; i_lang < n_languages; i_lang++) {
+      vocabulary_word *word = find_language_word_in_meaning(meaning, languages[i_lang]);
+      if ((i_lang != 0) && (between_cells != NULL)) {
+	fputs(between_cells, output_stream);
+      }
+      if (word != NULL) {
+	fputs(word->text, output_stream);
+      }
+    }
+
+    if (row_end != NULL) {
+      fputs(row_end, output_stream);
+    }
   }
 }
 
